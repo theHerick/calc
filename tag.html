@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scanner BLE Beacon</title>
+</head>
+<body>
+  <h1>Scanner BLE - LocSoundBeacon</h1>
+  <button id="scanBtn">Iniciar Scan</button>
+  <div id="status">Clique no botão para começar</div>
+
+  <script>
+    const BEACON_NAME = "LocSoundBeacon";
+    const RSSI_LIMIT = -70; // Ajuste para 2 metros
+
+    let scan;
+
+    document.getElementById('scanBtn').addEventListener('click', async () => {
+      if (!navigator.bluetooth) {
+        alert("Seu navegador não suporta Web Bluetooth.");
+        return;
+      }
+
+      document.getElementById('status').textContent = "Escaneando... Aproximar-se do beacon";
+
+      try {
+        // Começa a escanear
+        scan = await navigator.bluetooth.requestLEScan({
+          filters: [{ name: BEACON_NAME }],
+          keepRepeatedDevices: true
+        });
+
+        navigator.bluetooth.addEventListener('advertisementreceived', event => {
+          console.log('Dispositivo encontrado:', event.device.name, event.rssi);
+
+          if (event.rssi > RSSI_LIMIT) {
+            document.getElementById('status').textContent = `✅ Beacon "${event.device.name}" próximo! RSSI: ${event.rssi}`;
+            // Pode tocar som, vibrar, etc
+            if ("vibrate" in navigator) {
+              navigator.vibrate(200);
+            }
+          } else {
+            document.getElementById('status').textContent = `❌ Beacon "${event.device.name}" detectado, mas longe (RSSI: ${event.rssi})`;
+          }
+        });
+
+      } catch (error) {
+        document.getElementById('status').textContent = "Erro ao iniciar scan: " + error;
+      }
+    });
+  </script>
+</body>
+</html>
