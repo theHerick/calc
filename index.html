@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scanner BLE LocSound</title>
+  <title>Scanner BLE LocSound1</title>
   <style>
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -76,7 +76,7 @@
     }
 
     #deviceContainer {
-      margin-top: 20px;
+      margin-top: 20px
       width: 100%;
       max-width: 400px;
       display: flex;
@@ -120,61 +120,41 @@
     const deviceContainer = document.getElementById('deviceContainer');
     const dispositivos = new Map(); // nome => device
     let voz = window.speechSynthesis;
+    let scanAtivo = null;
 
     function falar(texto) {
       const msg = new SpeechSynthesisUtterance(texto);
       msg.lang = 'pt-BR';
-      msg.rate = 1.1; // Levemente mais rápido
-      msg.pitch = 1; // Tom natural
-      voz.cancel(); // Evita sobreposição
+      msg.rate = 1.1;
+      msg.pitch = 1;
+      voz.cancel();
       voz.speak(msg);
     }
 
-    // Função para ordenar dispositivos LocSound BLE primeiro
-    function ordenarDispositivos(devices) {
-      return devices.sort((a, b) => {
-        const aIsLocSound = a.name && a.name.startsWith('LocSound');
-        const bIsLocSound = b.name && b.name.startsWith('LocSound');
+    function ordenarDispositivos() {
+      return Array.from(dispositivos.entries()).sort((a, b) => {
+        const aIsLocSound = a[0].startsWith('LocSound');
+        const bIsLocSound = b[0].startsWith('LocSound');
         if (aIsLocSound && !bIsLocSound) return -1;
         if (!aIsLocSound && bIsLocSound) return 1;
-        return a.name.localeCompare(b.name);
+        return a[0].localeCompare(b[0]);
       });
     }
 
-    scanBtn.addEventListener('click', async () => {
-      if (!navigator.bluetooth) {
-        status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
-        falar("Navegador não suporta Bluetooth.");
-        return;
+    function atualizarListaDispositivos() {
+      deviceContainer.innerHTML = '';
+      const dispositivosOrdenados = ordenarDispositivos();
+      for (const [nome, device] of dispositivosOrdenados) {
+        const item = criarBotaoDispositivo(nome, device);
+        deviceContainer.appendChild(item);
       }
-
-      try {
-        status.textContent = "🔍 Escaneando dispositivos...";
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'LocSound' }],
-          optionalServices: ['battery_service', 'device_information', '0000180a-0000-1000-8000-00805f9b34fb']
-        });
-
-        if (!device.name) {
-          status.textContent = "⚠️ Dispositivo sem nome ignorado.";
-          falar("Dispositivo sem nome ignorado.");
-          return;
-        }
-
-        if (!dispositivos.has(device.name)) {
-          dispositivos.set(device.name, device);
-          atualizarListaDispositivos();
-          status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
-          falar(`Dispositivo ${device.name} adicionado`);
-        } else {
-          status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
-          falar(`Dispositivo ${device.name} já listado`);
-        }
-      } catch (error) {
-        status.textContent = `❌ Erro: ${error.message}`;
-        falar(`Erro: ${error.message}`);
+      status.textContent = dispositivos.size > 0
+        ? `📡 ${dispositivos.size} dispositivo(s) encontrado(s)`
+        : '⚠️ Nenhum dispositivo encontrado';
+      if (dispositivos.size > 0) {
+        falar(`${dispositivos.size} dispositivo${dispositivos.size > 1 ? 's' : ''} encontrado${dispositivos.size > 1 ? 's' : ''}`);
       }
-    });
+    }
 
     function criarBotaoDispositivo(nome, device) {
       const deviceItem = document.createElement('div');
@@ -205,7 +185,7 @@
             conectado = true;
             status.textContent = `✅ Conectado a ${nome}`;
             falar(`Conectado a ${nome}`);
-            btn.style.backgroundColor = '#4CAF50'; // Verde quando conectado
+            btn.style.backgroundColor = '#4CAF50';
           } catch (error) {
             status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
             falar(`Erro ao conectar em ${nome}`);
@@ -239,21 +219,55 @@
       return deviceItem;
     }
 
-    function atualizarListaDispositivos() {
-      deviceContainer.innerHTML = ''; // Limpa a lista
-      const dispositivosOrdenados = Array.from(dispositivos.entries()).sort((a, b) => {
-        const aIsLocSound = a[0].startsWith('LocSound');
-        const bIsLocSound = b[0].startsWith('LocSound');
-        if (aIsLocSound && !bIsLocSound) return -1;
-        if (!aIsLocSound && bIsLocSound) return 1;
-        return a[0].localeCompare(b[0]);
-      });
-
-      for (const [nome, device] of dispositivosOrdenados) {
-        const item = criarBotaoDispositivo(nome, device);
-        deviceContainer.appendChild(item);
+    scanBtn.addEventListener('click', async () => {
+      if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
+        status.textContent = "❌ Seu navegador não suporta Web Bluetooth ou escaneamento automático.";
+        falar("Navegador não suporta escaneamento Bluetooth.");
+        return;
       }
-    }
+
+      try {
+        status.textContent = "🔍 Escaneando dispositivos...";
+        falar("Escaneando dispositivos");
+        
+        // Para qualquer escaneamento anterior
+        if (scanAtivo) {
+          scanAtivo.stop();
+        }
+
+        // Inicia o escaneamento
+        scanAtivo = await navigator.bluetooth.requestLEScan({
+          filters: [{ namePrefix: 'LocSound' }],
+          keepAll: true
+        });
+
+        // Escuta eventos de dispositivos encontrados
+        navigator.bluetooth.addEventListener('advertisementreceived', (event) => {
+          const device = event.device;
+          if (device.name && !dispositivos.has(device.name)) {
+            dispositivos.set(device.name, device);
+            atualizarListaDispositivos();
+          }
+        });
+
+        // Para o escaneamento após 10 segundos
+        setTimeout(() => {
+          if (scanAtivo) {
+            scanAtivo.stop();
+            scanAtivo = null;
+            status.textContent = dispositivos.size > 0
+              ? `📡 Escaneamento concluído: ${dispositivos.size} dispositivo(s) encontrado(s)`
+              : '⚠️ Nenhum dispositivo encontrado';
+            falar("Escaneamento concluído");
+          }
+        }, 10000);
+
+      } catch (error) {
+        status.textContent = `❌ Erro ao iniciar escaneamento: ${error.message}`;
+        falar(`Erro: ${error.message}`);
+        scanAtivo = null;
+      }
+    });
   </script>
 </body>
 </html>
