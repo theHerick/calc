@@ -2,9 +2,6 @@
   "usuario": "herick",
   "senha": "1234",
   "dispositivos": {
-    "LocSound - Sala 1": {
-      "online": true,
-      "ultimoUso": "2025-08-04T10:00:00"
-    }
+
   }
 }
