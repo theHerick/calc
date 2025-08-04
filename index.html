@@ -12,14 +12,14 @@
     }
 
     button {
-      padding: 15px 30px;
-      font-size: 18px;
+      padding: 12px 24px;
+      font-size: 16px;
       border: none;
-      margin: 10px;
       background-color: #4CAF50;
       color: white;
       border-radius: 8px;
       cursor: pointer;
+      margin: 10px;
       transition: background-color 0.3s;
     }
 
@@ -27,28 +27,39 @@
       background-color: #45a049;
     }
 
+    .device-btn {
+      background-color: #2196F3;
+    }
+
+    .device-btn:hover {
+      background-color: #1976D2;
+    }
+
     #status {
-      margin-top: 30px;
-      font-size: 20px;
+      margin-top: 20px;
+      font-size: 18px;
       color: #333;
-      white-space: pre-line;
+    }
+
+    #deviceContainer {
+      margin-top: 30px;
     }
   </style>
 </head>
 <body>
 
   <h2>Scanner BLE - LocSound</h2>
-  <button id="scanBtn">🔐 Procurar e Conectar</button>
-  <button id="reconnectBtn" disabled>🔄 Repetir Conexão</button>
-  <div id="status">Clique em "Procurar e Conectar" para iniciar.</div>
+  <button id="scanBtn">🔍 Scanear Dispositivo</button>
+  <div id="status">Clique em "Scanear Dispositivo" para começar.</div>
+
+  <div id="deviceContainer"></div>
 
   <script>
-    let device = null;
-    let server = null;
-
-    const status = document.getElementById('status');
     const scanBtn = document.getElementById('scanBtn');
-    const reconnectBtn = document.getElementById('reconnectBtn');
+    const status = document.getElementById('status');
+    const deviceContainer = document.getElementById('deviceContainer');
+
+    const dispositivos = new Map(); // Mapa de nome => device
 
     scanBtn.addEventListener('click', async () => {
       if (!navigator.bluetooth) {
@@ -56,52 +67,53 @@
         return;
       }
 
-      const confirmar = confirm("Deseja procurar e conectar a dispositivos 'LocSound'?");
-      if (!confirmar) {
-        status.textContent = "🔒 Permissão negada.";
-        return;
-      }
-
       try {
-        status.textContent = "🔍 Procurando dispositivo LocSound...";
-
-        device = await navigator.bluetooth.requestDevice({
+        const device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: "LocSound" }],
-          optionalServices: ['battery_service'] // Adapte se precisar acessar serviços
+          optionalServices: ['battery_service'] // Ajuste conforme necessário
         });
 
-        await conectarDispositivo(device);
-        reconnectBtn.disabled = false;
+        if (!device.name) {
+          status.textContent = "⚠️ Dispositivo sem nome ignorado.";
+          return;
+        }
+
+        // Evita duplicar botões
+        if (!dispositivos.has(device.name)) {
+          dispositivos.set(device.name, device);
+          criarBotaoDispositivo(device.name);
+          status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
+        } else {
+          status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
+        }
 
       } catch (error) {
         status.textContent = "❌ Erro: " + error.message;
       }
     });
 
-    reconnectBtn.addEventListener('click', async () => {
-      if (!device) {
-        status.textContent = "⚠️ Nenhum dispositivo foi conectado ainda.";
-        return;
-      }
+    function criarBotaoDispositivo(nome) {
+      const btn = document.createElement('button');
+      btn.className = 'device-btn';
+      btn.textContent = `Conectar - ${nome}`;
+      btn.addEventListener('click', async () => {
+        const device = dispositivos.get(nome);
+        if (!device) return;
 
-      try {
-        if (device.gatt.connected) {
-          status.textContent = "🔌 Desconectando...";
-          device.gatt.disconnect();
+        try {
+          status.textContent = `🔌 Conectando a ${nome}...`;
+          const server = await device.gatt.connect();
+          status.textContent = `✅ Conectado a ${nome}`;
+
+          // Aqui você pode acessar serviços/características se quiser:
+          // const service = await server.getPrimaryService('battery_service');
+
+        } catch (error) {
+          status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
         }
+      });
 
-        status.textContent = "🔄 Reconectando...";
-        await conectarDispositivo(device);
-
-      } catch (error) {
-        status.textContent = "❌ Erro na reconexão: " + error.message;
-      }
-    });
-
-    async function conectarDispositivo(dev) {
-      status.textContent = `📡 Conectando ao dispositivo: ${dev.name}...`;
-      server = await dev.gatt.connect();
-      status.textContent = `✅ Conectado a ${dev.name}`;
+      deviceContainer.appendChild(btn);
     }
   </script>
 
