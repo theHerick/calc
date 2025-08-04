@@ -1,27 +1,70 @@
-<button id="scanBtn">Procurar Beacon</button>
-<div id="status"></div>
-
-<script>
-  const BEACON_NAME = "LocSoundBeacon";
-
-  document.getElementById('scanBtn').addEventListener('click', async () => {
-    if (!navigator.bluetooth) {
-      alert("Seu navegador não suporta Web Bluetooth");
-      return;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Scanner BLE LocSound</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f0f0f0;
     }
 
-    try {
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: BEACON_NAME }],
-        optionalServices: []
-      });
-      
-      document.getElementById('status').textContent = `Dispositivo encontrado: ${device.name}`;
-      
-      // Se quiser conectar e pegar RSSI, teria que conectar e usar APIs específicas, que podem não estar disponíveis
-      
-    } catch (error) {
-      document.getElementById('status').textContent = "Erro: " + error;
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
     }
-  });
-</script>
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #status {
+      margin-top: 30px;
+      font-size: 20px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Scanner BLE - LocSound</h2>
+  <button id="scanBtn">🔍 Procurar Beacon</button>
+  <div id="status">Aguardando...</div>
+
+  <script>
+    document.getElementById('scanBtn').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+
+      if (!navigator.bluetooth) {
+        status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
+        return;
+      }
+
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: []
+        });
+
+        if (device.name && device.name.startsWith("LocSound")) {
+          status.textContent = `✅ Dispositivo encontrado: ${device.name}`;
+        } else {
+          status.textContent = `⚠️ Dispositivo ignorado: ${device.name || "Sem nome"} (não começa com 'LocSound')`;
+        }
+
+      } catch (error) {
+        status.textContent = "❌ Erro: " + error.message;
+      }
+    });
+  </script>
+
+</body>
+</html>
