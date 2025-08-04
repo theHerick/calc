@@ -1,13 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>LocSound BLE</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; text-align: center; }
-    input { padding: 10px; margin: 5px; width: 220px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
-    .device-btn { display: block; margin: 10px auto; padding: 10px; width: 260px; border: none; border-radius: 6px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background: #f0f0f0;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    .device-btn {
+      display: block;
+      margin: 10px auto;
+      padding: 10px;
+      width: 260px;
+      border: none;
+      border-radius: 6px;
+    }
     .online { background: #4CAF50; color: white; }
     .offline { background: #f44336; color: white; }
     #deviceContainer { margin-top: 20px; }
@@ -19,117 +34,103 @@
   <div id="loginDiv">
     <input type="text" id="nome" placeholder="Nome"><br>
     <input type="password" id="senha" placeholder="Senha"><br>
-    <button onclick="entrarOuCriarConta()">Entrar / Criar Conta</button>
+    <button onclick="login()">Entrar</button>
   </div>
 
-  <div id="mainDiv" style="display:none;">
-    <p>Bem-vindo, <span id="usuarioNome"></span>!</p>
-    <button onclick="scanDispositivo()">🔍 Scanear Dispositivos LocSound</button>
+  <div id="appDiv" style="display:none">
+    <h3 id="userTitle"></h3>
+    <button onclick="scanBLE()">🔍 Procurar Dispositivos</button>
     <button onclick="desconectarTodos()">⛔ Desconectar de Todos</button>
-    <div id="status"></div>
     <div id="deviceContainer"></div>
   </div>
 
   <script>
     let usuarioAtual = null;
 
-    function getUsuarios() {
-      return JSON.parse(localStorage.getItem("usuarios")) || {};
-    }
-
-    function setUsuarios(usuarios) {
-      localStorage.setItem("usuarios", JSON.stringify(usuarios));
-    }
-
-    function entrarOuCriarConta() {
+    function login() {
       const nome = document.getElementById("nome").value.trim();
-      const senha = document.getElementById("senha").value.trim();
-      if (!nome || !senha) return alert("Preencha nome e senha!");
+      const senha = document.getElementById("senha").value;
 
-      const usuarios = getUsuarios();
+      if (!nome || !senha) return alert("Preencha nome e senha");
 
-      if (usuarios[nome]) {
-        if (usuarios[nome].senha !== senha) {
-          return alert("Senha incorreta.");
-        }
-      } else {
-        usuarios[nome] = { senha, dispositivos: {} };
-        setUsuarios(usuarios);
+      let users = JSON.parse(localStorage.getItem("usuarios") || "{}");
+
+      if (!users[nome]) {
+        users[nome] = { senha, dispositivos: {} };
+        localStorage.setItem("usuarios", JSON.stringify(users));
+        alert("Conta criada com sucesso!");
+      } else if (users[nome].senha !== senha) {
+        return alert("Senha incorreta");
       }
 
-      localStorage.setItem("usuario_atual", nome);
       usuarioAtual = nome;
-      mostrarDashboard();
-    }
-
-    function mostrarDashboard() {
       document.getElementById("loginDiv").style.display = "none";
-      document.getElementById("mainDiv").style.display = "block";
-      document.getElementById("usuarioNome").textContent = usuarioAtual;
-      carregarDispositivos();
+      document.getElementById("appDiv").style.display = "block";
+      document.getElementById("userTitle").innerText = `Usuário: ${nome}`;
+      renderizarDispositivos();
     }
 
-    function salvarDispositivo(nome, online) {
-      const usuarios = getUsuarios();
-      if (!usuarios[usuarioAtual]) return;
-      usuarios[usuarioAtual].dispositivos[nome] = {
-        online,
-        ultimoUso: new Date().toISOString()
-      };
-      setUsuarios(usuarios);
-    }
-
-    function carregarDispositivos() {
-      const usuarios = getUsuarios();
-      const user = usuarios[usuarioAtual];
+    function renderizarDispositivos() {
+      const users = JSON.parse(localStorage.getItem("usuarios"));
+      const dispositivos = users[usuarioAtual].dispositivos;
       const container = document.getElementById("deviceContainer");
       container.innerHTML = "";
-      if (!user || !user.dispositivos) return;
-      for (const nome in user.dispositivos) {
-        const d = user.dispositivos[nome];
-        criarBotao(nome, d.online);
+
+      for (let nome in dispositivos) {
+        const info = dispositivos[nome];
+        const btn = document.createElement("button");
+        btn.className = `device-btn ${info.online ? "online" : "offline"}`;
+        btn.innerText = `${nome} - ${info.online ? "Online" : "Offline"}`;
+        if (!info.online) {
+          btn.onclick = () => conectarDispositivo(nome);
+        }
+        container.appendChild(btn);
       }
     }
 
-    function criarBotao(nome, online) {
-      const container = document.getElementById("deviceContainer");
-      const btn = document.createElement("button");
-      btn.className = `device-btn ${online ? "online" : "offline"}`;
-      btn.textContent = `${nome} - ${online ? "Online" : "Offline"}`;
-      container.appendChild(btn);
+    async function scanBLE() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true
+        });
+
+        salvarDispositivo(device.name || device.id);
+      } catch (e) {
+        alert("Erro ao escanear: " + e);
+      }
+    }
+
+    function salvarDispositivo(nome) {
+      const users = JSON.parse(localStorage.getItem("usuarios"));
+      const user = users[usuarioAtual];
+
+      user.dispositivos[nome] = {
+        online: true,
+        ultimoUso: new Date().toISOString()
+      };
+      localStorage.setItem("usuarios", JSON.stringify(users));
+      renderizarDispositivos();
+    }
+
+    function conectarDispositivo(nome) {
+      const users = JSON.parse(localStorage.getItem("usuarios"));
+      const user = users[usuarioAtual];
+
+      user.dispositivos[nome].online = true;
+      user.dispositivos[nome].ultimoUso = new Date().toISOString();
+      localStorage.setItem("usuarios", JSON.stringify(users));
+      renderizarDispositivos();
     }
 
     function desconectarTodos() {
-      const usuarios = getUsuarios();
-      const user = usuarios[usuarioAtual];
-      if (!user) return;
-      for (const nome in user.dispositivos) {
+      const users = JSON.parse(localStorage.getItem("usuarios"));
+      const user = users[usuarioAtual];
+
+      for (let nome in user.dispositivos) {
         user.dispositivos[nome].online = false;
       }
-      setUsuarios(usuarios);
-      carregarDispositivos();
-    }
-
-    async function scanDispositivo() {
-      try {
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'LocSound' }],
-          optionalServices: ['battery_service']
-        });
-
-        const server = await device.gatt.connect();
-        salvarDispositivo(device.name, true);
-        carregarDispositivos();
-      } catch (e) {
-        document.getElementById("status").textContent = "Erro: " + e;
-      }
-    }
-
-    // Login automático se já estiver logado
-    const atual = localStorage.getItem("usuario_atual");
-    if (atual) {
-      usuarioAtual = atual;
-      mostrarDashboard();
+      localStorage.setItem("usuarios", JSON.stringify(users));
+      renderizarDispositivos();
     }
   </script>
 </body>
