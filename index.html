@@ -48,26 +48,21 @@
         return;
       }
 
-      // Mostrar mensagem inicial de permissão
-      const confirmar = confirm("Este site deseja acessar dispositivos Bluetooth próximos.\nVocê permite?");
+      const confirmar = confirm("Este site deseja acessar dispositivos Bluetooth próximos com nome 'LocSound'.\nVocê permite?");
       if (!confirmar) {
         status.textContent = "🔒 Permissão negada pelo usuário.";
         return;
       }
 
       try {
-        status.textContent = "🔍 Procurando dispositivos BLE próximos...";
+        status.textContent = "🔍 Procurando dispositivos LocSound...";
 
         const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
+          filters: [{ namePrefix: "LocSound" }],
           optionalServices: []
         });
 
-        if (device.name && device.name.startsWith("LocSound")) {
-          status.textContent = `✅ Dispositivo encontrado: ${device.name}`;
-        } else {
-          status.textContent = `⚠️ Dispositivo ignorado: ${device.name || "Sem nome"} (não começa com 'LocSound')`;
-        }
+        status.textContent = `✅ Dispositivo encontrado: ${device.name}`;
 
       } catch (error) {
         status.textContent = "❌ Erro: " + error.message;
