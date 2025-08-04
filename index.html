@@ -1,161 +1,280 @@
-<script>
-  const scanBtn = document.getElementById('scanBtn');
-  const status = document.getElementById('status');
-  const deviceContainer = document.getElementById('deviceContainer');
-  const dispositivos = new Map(); // nome => device
-  let voz = window.speechSynthesis;
-
-  function falar(texto) {
-    const msg = new SpeechSynthesisUtterance(texto);
-    msg.lang = 'pt-BR';
-    msg.rate = 1.1;
-    msg.pitch = 1;
-    voz.cancel();
-    voz.speak(msg);
-  }
-
-  function salvarDispositivosLocalmente() {
-    const nomes = Array.from(dispositivos.keys());
-    localStorage.setItem('dispositivosLocSound', JSON.stringify(nomes));
-  }
-
-  function carregarDispositivosSalvos() {
-    const salvos = JSON.parse(localStorage.getItem('dispositivosLocSound')) || [];
-    salvos.forEach(nome => {
-      dispositivos.set(nome, { name: nome, gatt: {} }); // Placeholder
-    });
-    atualizarListaDispositivos();
-  }
-
-  function ordenarDispositivos(devices) {
-    return devices.sort((a, b) => {
-      const aIsLocSound = a.name && a.name.startsWith('LocSound');
-      const bIsLocSound = b.name && b.name.startsWith('LocSound');
-      if (aIsLocSound && !bIsLocSound) return -1;
-      if (!aIsLocSound && bIsLocSound) return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  scanBtn.addEventListener('click', async () => {
-    if (!navigator.bluetooth) {
-      status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
-      falar("Navegador não suporta Bluetooth.");
-      return;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scanner BLE LocSound</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #e0e0e0, #f5f5f5);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    try {
-      status.textContent = "🔍 Escaneando dispositivos...";
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [{ namePrefix: 'LocSound' }],
-        optionalServices: ['battery_service', 'device_information']
-      });
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 28px;
+    }
 
-      if (!device.name) {
-        status.textContent = "⚠️ Dispositivo sem nome ignorado.";
-        falar("Dispositivo sem nome ignorado.");
+    button {
+      padding: 15px 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.3s ease;
+      width: 100%;
+      max-width: 350px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    #scanBtn {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    #scanBtn:hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+    }
+
+    .device-btn {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .device-btn:hover {
+      background-color: #1976D2;
+      transform: translateY(-2px);
+    }
+
+    .reconnect-btn {
+      background-color: #ff9800;
+      color: white;
+    }
+
+    .reconnect-btn:hover {
+      background-color: #e68900;
+      transform: translateY(-2px);
+    }
+
+    #status {
+      margin: 20px 0;
+      font-size: 18px;
+      color: #444;
+      font-weight: bold;
+      max-width: 90%;
+      word-wrap: break-word;
+    }
+
+    #deviceContainer {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .device-item {
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      width: 100%;
+      max-width: 350px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 600px) {
+      button {
+        font-size: 16px;
+        padding: 12px 15px;
+      }
+      h2 {
+        font-size: 24px;
+      }
+      #status {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Scanner BLE - LocSound</h2>
+  <button id="scanBtn">🔍 Scanear Dispositivos LocSound</button>
+  <div id="status">Clique em "Scanear Dispositivos" para começar.</div>
+  <div id="deviceContainer"></div>
+
+  <script>
+    const scanBtn = document.getElementById('scanBtn');
+    const status = document.getElementById('status');
+    const deviceContainer = document.getElementById('deviceContainer');
+    const dispositivos = new Map(); // nome => device
+    const storageKey = 'dispositivosLocSoundSalvos';
+    let voz = window.speechSynthesis;
+
+    function falar(texto) {
+      const msg = new SpeechSynthesisUtterance(texto);
+      msg.lang = 'pt-BR';
+      msg.rate = 1.1; // Levemente mais rápido
+      msg.pitch = 1;   // Tom natural
+      voz.cancel();    // Evita sobreposição
+      voz.speak(msg);
+    }
+
+    function salvarDispositivosLocalmente() {
+      const nomes = Array.from(dispositivos.keys());
+      localStorage.setItem(storageKey, JSON.stringify(nomes));
+    }
+
+    function carregarDispositivosSalvos() {
+      const salvos = JSON.parse(localStorage.getItem(storageKey)) || [];
+      salvos.forEach(nome => {
+        // Coloca um objeto simples só com o nome para exibir e tentar conectar depois
+        dispositivos.set(nome, { name: nome, gatt: {} });
+      });
+      atualizarListaDispositivos();
+    }
+
+    function ordenarDispositivos(devices) {
+      return devices.sort((a, b) => {
+        const aIsLocSound = a.name && a.name.startsWith('LocSound');
+        const bIsLocSound = b.name && b.name.startsWith('LocSound');
+        if (aIsLocSound && !bIsLocSound) return -1;
+        if (!aIsLocSound && bIsLocSound) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    scanBtn.addEventListener('click', async () => {
+      if (!navigator.bluetooth) {
+        status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
+        falar("Navegador não suporta Bluetooth.");
         return;
       }
 
-      if (!dispositivos.has(device.name)) {
-        dispositivos.set(device.name, device);
-        salvarDispositivosLocalmente();
-        atualizarListaDispositivos();
-        status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
-        falar(`Dispositivo ${device.name} adicionado`);
-      } else {
-        status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
-        falar(`Dispositivo ${device.name} já listado`);
-      }
-    } catch (error) {
-      status.textContent = `❌ Erro: ${error.message}`;
-      falar(`Erro: ${error.message}`);
-    }
-  });
-
-  function criarBotaoDispositivo(nome, device) {
-    const deviceItem = document.createElement('div');
-    deviceItem.className = 'device-item';
-
-    const btn = document.createElement('button');
-    btn.className = 'device-btn';
-    btn.textContent = `LocSound - ${nome}`;
-
-    const btnReconnect = document.createElement('button');
-    btnReconnect.className = 'reconnect-btn';
-    btnReconnect.textContent = `🔄 Reconectar - ${nome}`;
-
-    let pressTimer;
-    let conectado = false;
-    let server = null;
-
-    btn.addEventListener('click', async () => {
-      falar(`Dispositivo ${nome}`);
-    });
-
-    btn.addEventListener('mousedown', () => {
-      pressTimer = setTimeout(async () => {
-        try {
-          status.textContent = `🔌 Conectando a ${nome}...`;
-          falar(`Conectando a ${nome}`);
-          if (device.gatt && device.gatt.connect) {
-            server = await device.gatt.connect();
-            conectado = true;
-            status.textContent = `✅ Conectado a ${nome}`;
-            falar(`Conectado a ${nome}`);
-            btn.style.backgroundColor = '#4CAF50';
-          } else {
-            throw new Error("Dispositivo não pode ser reconectado automaticamente. Reescaneie.");
-          }
-        } catch (error) {
-          status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
-          falar(`Erro ao conectar em ${nome}`);
-        }
-      }, 800);
-    });
-
-    btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
-    btn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-
-    btnReconnect.addEventListener('click', async () => {
       try {
-        status.textContent = `🔁 Reconectando a ${nome}...`;
-        falar(`Reconectando a ${nome}`);
-        if (device.gatt && device.gatt.connected) {
-          device.gatt.disconnect();
+        status.textContent = "🔍 Escaneando dispositivos...";
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'LocSound' }],
+          optionalServices: ['battery_service', 'device_information']
+        });
+
+        if (!device.name) {
+          status.textContent = "⚠️ Dispositivo sem nome ignorado.";
+          falar("Dispositivo sem nome ignorado.");
+          return;
         }
-        server = await device.gatt.connect();
-        conectado = true;
-        status.textContent = `✅ Reconectado a ${nome}`;
-        falar(`Reconectado a ${nome}`);
-        btn.style.backgroundColor = '#4CAF50';
+
+        if (!dispositivos.has(device.name)) {
+          dispositivos.set(device.name, device);
+          salvarDispositivosLocalmente();
+          atualizarListaDispositivos();
+          status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
+          falar(`Dispositivo ${device.name} adicionado`);
+        } else {
+          status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
+          falar(`Dispositivo ${device.name} já listado`);
+        }
       } catch (error) {
-        status.textContent = `❌ Falha ao reconectar: ${error.message}`;
-        falar(`Erro ao reconectar em ${nome}`);
+        status.textContent = `❌ Erro: ${error.message}`;
+        falar(`Erro: ${error.message}`);
       }
     });
 
-    deviceItem.appendChild(btn);
-    deviceItem.appendChild(btnReconnect);
-    return deviceItem;
-  }
+    function criarBotaoDispositivo(nome, device) {
+      const deviceItem = document.createElement('div');
+      deviceItem.className = 'device-item';
 
-  function atualizarListaDispositivos() {
-    deviceContainer.innerHTML = '';
-    const dispositivosOrdenados = Array.from(dispositivos.entries()).sort((a, b) => {
-      const aIsLocSound = a[0].startsWith('LocSound');
-      const bIsLocSound = b[0].startsWith('LocSound');
-      if (aIsLocSound && !bIsLocSound) return -1;
-      if (!aIsLocSound && bIsLocSound) return 1;
-      return a[0].localeCompare(b[0]);
-    });
+      const btn = document.createElement('button');
+      btn.className = 'device-btn';
+      btn.textContent = `LocSound - ${nome}`;
 
-    for (const [nome, device] of dispositivosOrdenados) {
-      const item = criarBotaoDispositivo(nome, device);
-      deviceContainer.appendChild(item);
+      const btnReconnect = document.createElement('button');
+      btnReconnect.className = 'reconnect-btn';
+      btnReconnect.textContent = `🔄 Reconectar - ${nome}`;
+
+      let pressTimer;
+      let conectado = false;
+      let server = null;
+
+      btn.addEventListener('click', () => {
+        falar(`Dispositivo ${nome}`);
+      });
+
+      btn.addEventListener('mousedown', () => {
+        pressTimer = setTimeout(async () => {
+          try {
+            status.textContent = `🔌 Conectando a ${nome}...`;
+            falar(`Conectando a ${nome}`);
+            if (device.gatt && device.gatt.connect) {
+              server = await device.gatt.connect();
+              conectado = true;
+              status.textContent = `✅ Conectado a ${nome}`;
+              falar(`Conectado a ${nome}`);
+              btn.style.backgroundColor = '#4CAF50'; // Verde quando conectado
+            } else {
+              throw new Error("Dispositivo não pode ser reconectado automaticamente. Reescaneie.");
+            }
+          } catch (error) {
+            status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
+            falar(`Erro ao conectar em ${nome}`);
+          }
+        }, 800);
+      });
+
+      btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
+      btn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+
+      btnReconnect.addEventListener('click', async () => {
+        try {
+          status.textContent = `🔁 Reconectando a ${nome}...`;
+          falar(`Reconectando a ${nome}`);
+          if (device.gatt && device.gatt.connected) {
+            device.gatt.disconnect();
+          }
+          server = await device.gatt.connect();
+          conectado = true;
+          status.textContent = `✅ Reconectado a ${nome}`;
+          falar(`Reconectado a ${nome}`);
+          btn.style.backgroundColor = '#4CAF50';
+        } catch (error) {
+          status.textContent = `❌ Falha ao reconectar: ${error.message}`;
+          falar(`Erro ao reconectar em ${nome}`);
+        }
+      });
+
+      deviceItem.appendChild(btn);
+      deviceItem.appendChild(btnReconnect);
+      return deviceItem;
     }
-  }
 
-  // Carrega os dispositivos salvos ao abrir
-  window.addEventListener('load', carregarDispositivosSalvos);
-</script>
+    function atualizarListaDispositivos() {
+      deviceContainer.innerHTML = ''; // Limpa a lista
+      const dispositivosOrdenados = Array.from(dispositivos.entries()).sort((a, b) => {
+        const aIsLocSound = a[0].startsWith('LocSound');
+        const bIsLocSound = b[0].startsWith('LocSound');
+        if (aIsLocSound && !bIsLocSound) return -1;
+        if (!aIsLocSound && bIsLocSound) return 1;
+        return a[0].localeCompare(b[0]);
+      });
+
+      for (const [nome, device] of dispositivosOrdenados) {
+        const item = criarBotaoDispositivo(nome, device);
+        deviceContainer.appendChild(item);
+      }
+    }
+
+    window.addEventListener('load', carregarDispositivosSalvos);
+  </script>
+</body>
+</html>
