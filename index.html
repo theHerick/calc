@@ -15,6 +15,7 @@
       padding: 15px 30px;
       font-size: 18px;
       border: none;
+      margin: 10px;
       background-color: #4CAF50;
       color: white;
       border-radius: 8px;
@@ -30,6 +31,7 @@
       margin-top: 30px;
       font-size: 20px;
       color: #333;
+      white-space: pre-line;
     }
   </style>
 </head>
@@ -37,46 +39,70 @@
 
   <h2>Scanner BLE - LocSound</h2>
   <button id="scanBtn">🔐 Procurar e Conectar</button>
-  <div id="status">Clique no botão para iniciar o escaneamento.</div>
+  <button id="reconnectBtn" disabled>🔄 Repetir Conexão</button>
+  <div id="status">Clique em "Procurar e Conectar" para iniciar.</div>
 
   <script>
-    document.getElementById('scanBtn').addEventListener('click', async () => {
-      const status = document.getElementById('status');
+    let device = null;
+    let server = null;
 
+    const status = document.getElementById('status');
+    const scanBtn = document.getElementById('scanBtn');
+    const reconnectBtn = document.getElementById('reconnectBtn');
+
+    scanBtn.addEventListener('click', async () => {
       if (!navigator.bluetooth) {
         status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
         return;
       }
 
-      const confirmar = confirm("Este site deseja acessar e conectar-se a dispositivos 'LocSound'. Você permite?");
+      const confirmar = confirm("Deseja procurar e conectar a dispositivos 'LocSound'?");
       if (!confirmar) {
-        status.textContent = "🔒 Permissão negada pelo usuário.";
+        status.textContent = "🔒 Permissão negada.";
         return;
       }
 
       try {
-        status.textContent = "🔍 Procurando dispositivos LocSound...";
+        status.textContent = "🔍 Procurando dispositivo LocSound...";
 
-        const device = await navigator.bluetooth.requestDevice({
+        device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: "LocSound" }],
-          optionalServices: ['battery_service'] // Adicione seus serviços reais aqui se precisar
+          optionalServices: ['battery_service'] // Adapte se precisar acessar serviços
         });
 
-        status.textContent = `📡 Dispositivo encontrado: ${device.name}\nConectando...`;
-
-        const server = await device.gatt.connect();
-
-        status.textContent = `✅ Conectado ao dispositivo: ${device.name}`;
-
-        // Aqui você pode acessar serviços/características se quiser:
-        // const service = await server.getPrimaryService('battery_service');
-        // const characteristic = await service.getCharacteristic('battery_level');
-        // const value = await characteristic.readValue();
+        await conectarDispositivo(device);
+        reconnectBtn.disabled = false;
 
       } catch (error) {
         status.textContent = "❌ Erro: " + error.message;
       }
     });
+
+    reconnectBtn.addEventListener('click', async () => {
+      if (!device) {
+        status.textContent = "⚠️ Nenhum dispositivo foi conectado ainda.";
+        return;
+      }
+
+      try {
+        if (device.gatt.connected) {
+          status.textContent = "🔌 Desconectando...";
+          device.gatt.disconnect();
+        }
+
+        status.textContent = "🔄 Reconectando...";
+        await conectarDispositivo(device);
+
+      } catch (error) {
+        status.textContent = "❌ Erro na reconexão: " + error.message;
+      }
+    });
+
+    async function conectarDispositivo(dev) {
+      status.textContent = `📡 Conectando ao dispositivo: ${dev.name}...`;
+      server = await dev.gatt.connect();
+      status.textContent = `✅ Conectado a ${dev.name}`;
+    }
   </script>
 
 </body>
