@@ -2,186 +2,111 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Scanner BLE LocSound</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: linear-gradient(135deg, #e0e0e0, #f5f5f5);
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h2 {
-      color: #333;
-      margin-bottom: 20px;
-      font-size: 28px;
-    }
-    button {
-      padding: 15px 20px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin: 10px;
-      transition: all 0.3s ease;
-      width: 100%;
-      max-width: 350px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    #scanBtn {
-      background-color: #4CAF50;
-      color: white;
-    }
-    #scanBtn:hover {
-      background-color: #45a049;
-      transform: translateY(-2px);
-    }
-    .device-btn {
-      background-color: #2196F3;
-      color: white;
-    }
-    .device-btn:hover {
-      background-color: #1976D2;
-      transform: translateY(-2px);
-    }
-    .disconnect-btn {
-      background-color: #ff9800;
-      color: white;
-    }
-    .disconnect-btn:hover {
-      background-color: #e68900;
-      transform: translateY(-2px);
-    }
-    #status {
-      margin: 20px 0;
-      font-size: 18px;
-      color: #444;
-      font-weight: bold;
-      max-width: 90%;
-      word-wrap: break-word;
-    }
-    #deviceContainer {
-      margin-top: 20px;
-      width: 100%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .device-item {
-      background: white;
-      border-radius: 8px;
-      padding: 10px;
-      width: 100%;
-      max-width: 350px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-  </style>
-</head>
-<body>
-  <h2>Scanner BLE - LocSound</h2>
-  <button id="scanBtn">🔍 Scanear Dispositivos LocSound</button>
-  <div id="status">Clique em "Scanear Dispositivos" para começar.</div>
-  <div id="deviceContainer"></div>
+  <title>LocSound BLE com Firebase</title>
+  <script type="module">
+    // Importa os módulos do Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-  <script>
-    const scanBtn = document.getElementById('scanBtn');
-    const status = document.getElementById('status');
-    const deviceContainer = document.getElementById('deviceContainer');
-    const dispositivos = new Map(); // nome => { device, conectado }
+    const firebaseConfig = {
+      apiKey: "AIzaSyBD6yjWumcmaugkoKlStcsKWcMXwTK2DLc",
+      authDomain: "locsound-b4f27.firebaseapp.com",
+      databaseURL: "https://locsound-b4f27-default-rtdb.firebaseio.com",
+      projectId: "locsound-b4f27",
+      storageBucket: "locsound-b4f27.firebasestorage.app",
+      messagingSenderId: "592998466073",
+      appId: "1:592998466073:web:4c47763505096354fd6088",
+      measurementId: "G-Q8NEQQVS1J"
+    };
 
-    scanBtn.addEventListener('click', async () => {
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let usuario = null;
+
+    window.onload = () => {
+      document.getElementById('btnLogin').onclick = () => {
+        const nome = document.getElementById('inputUsuario').value.trim();
+        if (!nome) {
+          alert('Digite seu nome de usuário');
+          return;
+        }
+        usuario = nome;
+        document.getElementById('loginDiv').style.display = 'none';
+        document.getElementById('appDiv').style.display = 'block';
+        carregarDispositivosFirebase();
+      };
+
+      document.getElementById('btnScan').onclick = scanDispositivo;
+    };
+
+    async function scanDispositivo() {
+      if (!usuario) {
+        alert('Faça login primeiro');
+        return;
+      }
       if (!navigator.bluetooth) {
-        status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
+        alert('Seu navegador não suporta Web Bluetooth');
         return;
       }
 
       try {
-        status.textContent = "🔍 Escaneando dispositivos...";
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: 'LocSound' }],
-          optionalServices: ['battery_service', 'device_information', '0000180a-0000-1000-8000-00805f9b34fb']
+          optionalServices: ['battery_service']
         });
 
-        if (!device.name) {
-          status.textContent = "⚠️ Dispositivo sem nome ignorado.";
+        // Salvar no Firebase
+        const dispositivosRef = ref(db, `usuarios/${usuario}/dispositivos`);
+        await push(dispositivosRef, {
+          nome: device.name || 'Sem nome',
+          id: device.id,
+          conectadoEm: Date.now()
+        });
+
+        alert(`Dispositivo ${device.name} salvo com sucesso!`);
+        carregarDispositivosFirebase();
+
+      } catch (e) {
+        alert('Erro ao escanear dispositivo: ' + e.message);
+      }
+    }
+
+    function carregarDispositivosFirebase() {
+      const dispositivosRef = ref(db, `usuarios/${usuario}/dispositivos`);
+      const lista = document.getElementById('listaDispositivos');
+      lista.innerHTML = 'Carregando...';
+
+      onValue(dispositivosRef, (snapshot) => {
+        const dados = snapshot.val();
+        lista.innerHTML = '';
+        if (!dados) {
+          lista.innerHTML = '<p>Nenhum dispositivo salvo.</p>';
           return;
         }
-
-        if (!dispositivos.has(device.name)) {
-          dispositivos.set(device.name, { device, conectado: false });
-          atualizarListaDispositivos();
-          status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
-        } else {
-          status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
-        }
-      } catch (error) {
-        status.textContent = `❌ Erro: ${error.message}`;
-      }
-    });
-
-    function criarBotaoDispositivo(nome, info) {
-      const deviceItem = document.createElement('div');
-      deviceItem.className = 'device-item';
-
-      const btn = document.createElement('button');
-      btn.className = 'device-btn';
-      btn.textContent = info.conectado ? `🔌 Desconectar - ${nome}` : `🔗 Conectar - ${nome}`;
-
-      btn.addEventListener('click', async () => {
-        const device = info.device;
-
-        try {
-          if (!info.conectado) {
-            status.textContent = `🔌 Conectando a ${nome}...`;
-            await device.gatt.connect();
-            info.conectado = true;
-            btn.textContent = `🔌 Desconectar - ${nome}`;
-            status.textContent = `✅ Conectado a ${nome}`;
-          } else {
-            device.gatt.disconnect();
-            info.conectado = false;
-            btn.textContent = `🔗 Conectar - ${nome}`;
-            status.textContent = `🔌 Desconectado de ${nome}`;
-          }
-        } catch (error) {
-          status.textContent = `❌ Erro na conexão: ${error.message}`;
-        }
+        Object.entries(dados).forEach(([key, valor]) => {
+          const div = document.createElement('div');
+          div.textContent = `${valor.nome} (ID: ${valor.id}) - conectado em: ${new Date(valor.conectadoEm).toLocaleString()}`;
+          lista.appendChild(div);
+        });
+      }, {
+        onlyOnce: false
       });
-
-      deviceItem.appendChild(btn);
-      return deviceItem;
     }
-
-    function atualizarListaDispositivos() {
-      deviceContainer.innerHTML = '';
-      for (const [nome, info] of dispositivos.entries()) {
-        const item = criarBotaoDispositivo(nome, info);
-        deviceContainer.appendChild(item);
-      }
-    }
-
-    // Botão para desconectar todos
-    const disconnectAllBtn = document.createElement('button');
-    disconnectAllBtn.className = 'disconnect-btn';
-    disconnectAllBtn.textContent = '⛔ Desconectar de Todos';
-    disconnectAllBtn.style.maxWidth = '350px';
-    disconnectAllBtn.addEventListener('click', () => {
-      dispositivos.forEach(info => {
-        if (info.conectado) {
-          info.device.gatt.disconnect();
-          info.conectado = false;
-        }
-      });
-      atualizarListaDispositivos();
-      status.textContent = '⛔ Todos dispositivos desconectados.';
-    });
-    deviceContainer.parentNode.insertBefore(disconnectAllBtn, deviceContainer.nextSibling);
   </script>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin:auto;">
+  <h2>LocSound BLE com Firebase</h2>
+
+  <div id="loginDiv">
+    <input type="text" id="inputUsuario" placeholder="Digite seu nome" style="padding: 8px; width: 80%;" />
+    <button id="btnLogin" style="padding: 10px;">Login</button>
+  </div>
+
+  <div id="appDiv" style="display:none;">
+    <button id="btnScan" style="padding: 15px; width: 100%; margin-top: 10px;">🔍 Scanear Dispositivo LocSound</button>
+    <h3>Dispositivos Salvos</h3>
+    <div id="listaDispositivos" style="border: 1px solid #ccc; padding: 10px; min-height: 100px;"></div>
+  </div>
 </body>
 </html>
