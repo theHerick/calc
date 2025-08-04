@@ -16,13 +16,11 @@
       flex-direction: column;
       align-items: center;
     }
-
     h2 {
       color: #333;
       margin-bottom: 20px;
       font-size: 28px;
     }
-
     button {
       padding: 15px 20px;
       font-size: 18px;
@@ -35,37 +33,22 @@
       max-width: 350px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-
     #scanBtn {
       background-color: #4CAF50;
       color: white;
     }
-
     #scanBtn:hover {
       background-color: #45a049;
       transform: translateY(-2px);
     }
-
     .device-btn {
       background-color: #2196F3;
       color: white;
     }
-
     .device-btn:hover {
       background-color: #1976D2;
       transform: translateY(-2px);
     }
-
-    .reconnect-btn {
-      background-color: #ff9800;
-      color: white;
-    }
-
-    .reconnect-btn:hover {
-      background-color: #e68900;
-      transform: translateY(-2px);
-    }
-
     #status {
       margin: 20px 0;
       font-size: 18px;
@@ -74,7 +57,6 @@
       max-width: 90%;
       word-wrap: break-word;
     }
-
     #deviceContainer {
       margin-top: 20px;
       width: 100%;
@@ -84,7 +66,6 @@
       align-items: center;
       gap: 10px;
     }
-
     .device-item {
       background: white;
       border-radius: 8px;
@@ -92,19 +73,6 @@
       width: 100%;
       max-width: 350px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    @media (max-width: 600px) {
-      button {
-        font-size: 16px;
-        padding: 12px 15px;
-      }
-      h2 {
-        font-size: 24px;
-      }
-      #status {
-        font-size: 16px;
-      }
     }
   </style>
 </head>
@@ -118,29 +86,34 @@
     const scanBtn = document.getElementById('scanBtn');
     const status = document.getElementById('status');
     const deviceContainer = document.getElementById('deviceContainer');
-    const dispositivos = new Map(); // nome => device
     const storageKey = 'dispositivosLocSoundSalvos';
+
+    // Map: nome => objeto real BluetoothDevice ou objeto parcial {name, id}
+    const dispositivos = new Map();
     let voz = window.speechSynthesis;
 
     function falar(texto) {
       const msg = new SpeechSynthesisUtterance(texto);
       msg.lang = 'pt-BR';
-      msg.rate = 1.1; // Levemente mais rápido
-      msg.pitch = 1;   // Tom natural
-      voz.cancel();    // Evita sobreposição
+      msg.rate = 1.1;
+      msg.pitch = 1;
+      voz.cancel();
       voz.speak(msg);
     }
 
     function salvarDispositivosLocalmente() {
-      const nomes = Array.from(dispositivos.keys());
-      localStorage.setItem(storageKey, JSON.stringify(nomes));
+      // Salva só nome e id (se existir)
+      const dados = Array.from(dispositivos.values()).map(d => ({
+        name: d.name,
+        id: d.id || null
+      }));
+      localStorage.setItem(storageKey, JSON.stringify(dados));
     }
 
     function carregarDispositivosSalvos() {
       const salvos = JSON.parse(localStorage.getItem(storageKey)) || [];
-      salvos.forEach(nome => {
-        // Coloca um objeto simples só com o nome para exibir e tentar conectar depois
-        dispositivos.set(nome, { name: nome, gatt: {} });
+      salvos.forEach(d => {
+        dispositivos.set(d.name, d);
       });
       atualizarListaDispositivos();
     }
@@ -191,6 +164,43 @@
       }
     });
 
+    async function conectarDispositivo(device) {
+      try {
+        status.textContent = `🔌 Conectando a ${device.name}...`;
+        falar(`Conectando a ${device.name}`);
+
+        // Se o device for um objeto real (tem gatt e connect)
+        if (device.gatt && device.gatt.connect) {
+          await device.gatt.connect();
+          status.textContent = `✅ Conectado a ${device.name}`;
+          falar(`Conectado a ${device.name}`);
+          return device; // Retorna o dispositivo real conectado
+        }
+
+        // Se for objeto parcial, tenta pedir de novo pelo nome
+        const deviceReal = await navigator.bluetooth.requestDevice({
+          filters: [{ name: device.name }],
+          optionalServices: ['battery_service', 'device_information']
+        });
+
+        await deviceReal.gatt.connect();
+        status.textContent = `✅ Conectado a ${deviceReal.name}`;
+        falar(`Conectado a ${deviceReal.name}`);
+
+        // Atualiza na lista
+        dispositivos.set(deviceReal.name, deviceReal);
+        salvarDispositivosLocalmente();
+        atualizarListaDispositivos();
+
+        return deviceReal;
+
+      } catch (error) {
+        status.textContent = `❌ Erro ao conectar a ${device.name}: ${error.message}`;
+        falar(`Erro ao conectar em ${device.name}`);
+        throw error;
+      }
+    }
+
     function criarBotaoDispositivo(nome, device) {
       const deviceItem = document.createElement('div');
       deviceItem.className = 'device-item';
@@ -199,82 +209,31 @@
       btn.className = 'device-btn';
       btn.textContent = `LocSound - ${nome}`;
 
-      const btnReconnect = document.createElement('button');
-      btnReconnect.className = 'reconnect-btn';
-      btnReconnect.textContent = `🔄 Reconectar - ${nome}`;
-
-      let pressTimer;
-      let conectado = false;
-      let server = null;
-
-      btn.addEventListener('click', () => {
-        falar(`Dispositivo ${nome}`);
-      });
-
-      btn.addEventListener('mousedown', () => {
-        pressTimer = setTimeout(async () => {
-          try {
-            status.textContent = `🔌 Conectando a ${nome}...`;
-            falar(`Conectando a ${nome}`);
-            if (device.gatt && device.gatt.connect) {
-              server = await device.gatt.connect();
-              conectado = true;
-              status.textContent = `✅ Conectado a ${nome}`;
-              falar(`Conectado a ${nome}`);
-              btn.style.backgroundColor = '#4CAF50'; // Verde quando conectado
-            } else {
-              throw new Error("Dispositivo não pode ser reconectado automaticamente. Reescaneie.");
-            }
-          } catch (error) {
-            status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
-            falar(`Erro ao conectar em ${nome}`);
-          }
-        }, 800);
-      });
-
-      btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
-      btn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-
-      btnReconnect.addEventListener('click', async () => {
+      btn.addEventListener('click', async () => {
         try {
-          status.textContent = `🔁 Reconectando a ${nome}...`;
-          falar(`Reconectando a ${nome}`);
-          if (device.gatt && device.gatt.connected) {
-            device.gatt.disconnect();
-          }
-          server = await device.gatt.connect();
-          conectado = true;
-          status.textContent = `✅ Reconectado a ${nome}`;
-          falar(`Reconectado a ${nome}`);
-          btn.style.backgroundColor = '#4CAF50';
-        } catch (error) {
-          status.textContent = `❌ Falha ao reconectar: ${error.message}`;
-          falar(`Erro ao reconectar em ${nome}`);
+          await conectarDispositivo(device);
+        } catch {
+          // Erro já tratado dentro conectarDispositivo
         }
       });
 
       deviceItem.appendChild(btn);
-      deviceItem.appendChild(btnReconnect);
       return deviceItem;
     }
 
     function atualizarListaDispositivos() {
-      deviceContainer.innerHTML = ''; // Limpa a lista
-      const dispositivosOrdenados = Array.from(dispositivos.entries()).sort((a, b) => {
-        const aIsLocSound = a[0].startsWith('LocSound');
-        const bIsLocSound = b[0].startsWith('LocSound');
-        if (aIsLocSound && !bIsLocSound) return -1;
-        if (!aIsLocSound && bIsLocSound) return 1;
-        return a[0].localeCompare(b[0]);
-      });
+      deviceContainer.innerHTML = '';
+      const dispositivosOrdenados = ordenarDispositivos(Array.from(dispositivos.values()));
 
-      for (const [nome, device] of dispositivosOrdenados) {
-        const item = criarBotaoDispositivo(nome, device);
+      for (const device of dispositivosOrdenados) {
+        const item = criarBotaoDispositivo(device.name, device);
         deviceContainer.appendChild(item);
       }
     }
 
-    window.addEventListener('load', carregarDispositivosSalvos);
+    window.addEventListener('load', () => {
+      carregarDispositivosSalvos();
+    });
   </script>
 </body>
 </html>
