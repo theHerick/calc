@@ -1,99 +1,161 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <title>LocSound BLE Scanner</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      background: #f0f0f0;
-      text-align: center;
+<script>
+  const scanBtn = document.getElementById('scanBtn');
+  const status = document.getElementById('status');
+  const deviceContainer = document.getElementById('deviceContainer');
+  const dispositivos = new Map(); // nome => device
+  let voz = window.speechSynthesis;
+
+  function falar(texto) {
+    const msg = new SpeechSynthesisUtterance(texto);
+    msg.lang = 'pt-BR';
+    msg.rate = 1.1;
+    msg.pitch = 1;
+    voz.cancel();
+    voz.speak(msg);
+  }
+
+  function salvarDispositivosLocalmente() {
+    const nomes = Array.from(dispositivos.keys());
+    localStorage.setItem('dispositivosLocSound', JSON.stringify(nomes));
+  }
+
+  function carregarDispositivosSalvos() {
+    const salvos = JSON.parse(localStorage.getItem('dispositivosLocSound')) || [];
+    salvos.forEach(nome => {
+      dispositivos.set(nome, { name: nome, gatt: {} }); // Placeholder
+    });
+    atualizarListaDispositivos();
+  }
+
+  function ordenarDispositivos(devices) {
+    return devices.sort((a, b) => {
+      const aIsLocSound = a.name && a.name.startsWith('LocSound');
+      const bIsLocSound = b.name && b.name.startsWith('LocSound');
+      if (aIsLocSound && !bIsLocSound) return -1;
+      if (!aIsLocSound && bIsLocSound) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  scanBtn.addEventListener('click', async () => {
+    if (!navigator.bluetooth) {
+      status.textContent = "❌ Seu navegador não suporta Web Bluetooth.";
+      falar("Navegador não suporta Bluetooth.");
+      return;
     }
 
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+    try {
+      status.textContent = "🔍 Escaneando dispositivos...";
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'LocSound' }],
+        optionalServices: ['battery_service', 'device_information']
+      });
 
-    #devices, #savedDevices {
-      margin-top: 30px;
-    }
-
-    .device-btn {
-      display: block;
-      margin: 10px auto;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 10px;
-      border-radius: 5px;
-      width: 80%;
-    }
-  </style>
-</head>
-<body>
-  <h1>LocSound BLE Scanner</h1>
-  <button onclick="scanBLE()">🔍 Escanear Dispositivos</button>
-  <div id="devices"></div>
-  <h2>🔒 Salvos</h2>
-  <div id="savedDevices"></div>
-
-  <script>
-    const savedKey = "locsound_saved_devices";
-
-    async function scanBLE() {
-      try {
-        const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: []
-        });
-
-        showDevice(device.name || "Sem nome", device.id, true);
-      } catch (error) {
-        console.error("Erro ao escanear:", error);
-        alert("Erro ao escanear: " + error.message);
+      if (!device.name) {
+        status.textContent = "⚠️ Dispositivo sem nome ignorado.";
+        falar("Dispositivo sem nome ignorado.");
+        return;
       }
+
+      if (!dispositivos.has(device.name)) {
+        dispositivos.set(device.name, device);
+        salvarDispositivosLocalmente();
+        atualizarListaDispositivos();
+        status.textContent = `📡 Dispositivo adicionado: ${device.name}`;
+        falar(`Dispositivo ${device.name} adicionado`);
+      } else {
+        status.textContent = `ℹ️ Dispositivo ${device.name} já está listado.`;
+        falar(`Dispositivo ${device.name} já listado`);
+      }
+    } catch (error) {
+      status.textContent = `❌ Erro: ${error.message}`;
+      falar(`Erro: ${error.message}`);
     }
+  });
 
-    function showDevice(name, id, save = false) {
-      const container = document.getElementById("savedDevices");
+  function criarBotaoDispositivo(nome, device) {
+    const deviceItem = document.createElement('div');
+    deviceItem.className = 'device-item';
 
-      const btn = document.createElement("button");
-      btn.className = "device-btn";
-      btn.textContent = `🔗 ${name}`;
-      btn.onclick = () => connectToDevice(name);
-      container.appendChild(btn);
+    const btn = document.createElement('button');
+    btn.className = 'device-btn';
+    btn.textContent = `LocSound - ${nome}`;
 
-      if (save) {
-        let saved = JSON.parse(localStorage.getItem(savedKey)) || [];
-        if (!saved.some(d => d.id === id)) {
-          saved.push({ name, id });
-          localStorage.setItem(savedKey, JSON.stringify(saved));
+    const btnReconnect = document.createElement('button');
+    btnReconnect.className = 'reconnect-btn';
+    btnReconnect.textContent = `🔄 Reconectar - ${nome}`;
+
+    let pressTimer;
+    let conectado = false;
+    let server = null;
+
+    btn.addEventListener('click', async () => {
+      falar(`Dispositivo ${nome}`);
+    });
+
+    btn.addEventListener('mousedown', () => {
+      pressTimer = setTimeout(async () => {
+        try {
+          status.textContent = `🔌 Conectando a ${nome}...`;
+          falar(`Conectando a ${nome}`);
+          if (device.gatt && device.gatt.connect) {
+            server = await device.gatt.connect();
+            conectado = true;
+            status.textContent = `✅ Conectado a ${nome}`;
+            falar(`Conectado a ${nome}`);
+            btn.style.backgroundColor = '#4CAF50';
+          } else {
+            throw new Error("Dispositivo não pode ser reconectado automaticamente. Reescaneie.");
+          }
+        } catch (error) {
+          status.textContent = `❌ Erro ao conectar a ${nome}: ${error.message}`;
+          falar(`Erro ao conectar em ${nome}`);
         }
-      }
-    }
+      }, 800);
+    });
 
-    async function connectToDevice(name) {
+    btn.addEventListener('mouseup', () => clearTimeout(pressTimer));
+    btn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+
+    btnReconnect.addEventListener('click', async () => {
       try {
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ name }]
-        });
-        const server = await device.gatt.connect();
-        alert("Conectado com sucesso a " + name);
-        // Aqui você pode fazer algo com o `server`
+        status.textContent = `🔁 Reconectando a ${nome}...`;
+        falar(`Reconectando a ${nome}`);
+        if (device.gatt && device.gatt.connected) {
+          device.gatt.disconnect();
+        }
+        server = await device.gatt.connect();
+        conectado = true;
+        status.textContent = `✅ Reconectado a ${nome}`;
+        falar(`Reconectado a ${nome}`);
+        btn.style.backgroundColor = '#4CAF50';
       } catch (error) {
-        alert("Erro ao conectar com " + name + ": " + error.message);
+        status.textContent = `❌ Falha ao reconectar: ${error.message}`;
+        falar(`Erro ao reconectar em ${nome}`);
       }
-    }
+    });
 
-    // Carrega dispositivos salvos ao iniciar
-    window.onload = () => {
-      const saved = JSON.parse(localStorage.getItem(savedKey)) || [];
-      saved.forEach(d => showDevice(d.name, d.id, false));
-    };
-  </script>
-</body>
-</html>
+    deviceItem.appendChild(btn);
+    deviceItem.appendChild(btnReconnect);
+    return deviceItem;
+  }
+
+  function atualizarListaDispositivos() {
+    deviceContainer.innerHTML = '';
+    const dispositivosOrdenados = Array.from(dispositivos.entries()).sort((a, b) => {
+      const aIsLocSound = a[0].startsWith('LocSound');
+      const bIsLocSound = b[0].startsWith('LocSound');
+      if (aIsLocSound && !bIsLocSound) return -1;
+      if (!aIsLocSound && bIsLocSound) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+
+    for (const [nome, device] of dispositivosOrdenados) {
+      const item = criarBotaoDispositivo(nome, device);
+      deviceContainer.appendChild(item);
+    }
+  }
+
+  // Carrega os dispositivos salvos ao abrir
+  window.addEventListener('load', carregarDispositivosSalvos);
+</script>
