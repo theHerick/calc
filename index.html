@@ -2,25 +2,24 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>LocSound BLE + Firebase</title>
+  <title>Locais BLE</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f5f5f5; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
-    .device-btn { display: block; margin: 5px auto; background: #d9f0ff; border-radius: 8px; border: none; cursor: pointer; }
+    body { font-family: sans-serif; text-align: center; margin-top: 40px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    .device-btn { display: block; margin: 5px auto; }
   </style>
 </head>
 <body>
-  <h1>LocSound - Scanner BLE</h1>
-  <button onclick="scanBLE()">🔍 Escanear Dispositivos</button>
-  <div id="deviceList"></div>
-  <h3>Dispositivos salvos</h3>
-  <div id="savedList"></div>
-  <button onclick="disconnectAll()">🔌 Desconectar de Todos</button>
+  <h1>Dispositivos LocSound</h1>
+  <button onclick="escanear()">➕ Adicionar Dispositivo</button>
+  <div id="dispositivos"></div>
+  <button onclick="desconectarTodos()">❌ Desconectar de Todos</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBD6yjWumcmaugkoKlStcsKWcMXwTK2DLc",
       authDomain: "locsound-b4f27.firebaseapp.com",
@@ -32,74 +31,75 @@
       measurementId: "G-Q8NEQQVS1J"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const userId = "herick"; // pode usar nome de conta no futuro
+    let conexoes = {};
 
-    let connectedDevices = [];
-
-    function saveDeviceToFirebase(name, id) {
-      set(ref(db, `usuarios/${userId}/dispositivos/${id}`), {
-        name: name,
-        id: id
-      });
-    }
-
-    async function scanBLE() {
+    async function escanear() {
       try {
         const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true
+          acceptAllDevices: true,
+          optionalServices: []
         });
-        connectedDevices.push(device);
-        saveDeviceToFirebase(device.name || "Sem Nome", device.id);
-        alert(`Dispositivo encontrado: ${device.name || "Sem Nome"}`);
-      } catch (error) {
-        console.error("Erro ao escanear dispositivo:", error);
+
+        const nome = device.name || device.id;
+        await db.ref("locais/" + nome).set({
+          name: device.name || "Sem nome",
+          id: device.id
+        });
+
+        carregarDispositivos();
+      } catch (e) {
+        alert("Erro ao escanear: " + e);
       }
     }
 
-    function renderSavedDevices() {
-      const savedList = document.getElementById("savedList");
-      savedList.innerHTML = "Carregando...";
+    async function carregarDispositivos() {
+      const container = document.getElementById("dispositivos");
+      container.innerHTML = "";
 
-      const userRef = ref(db, `usuarios/${userId}/dispositivos`);
-      onValue(userRef, (snapshot) => {
-        savedList.innerHTML = "";
-        const data = snapshot.val();
-        if (data) {
-          Object.values(data).forEach((dev) => {
-            const btn = document.createElement("button");
-            btn.textContent = `🔗 ${dev.name}`;
-            btn.className = "device-btn";
-            btn.onclick = () => reconnectDevice(); // reconectar
-            savedList.appendChild(btn);
-          });
-        } else {
-          savedList.innerHTML = "Nenhum salvo ainda.";
-        }
+      const snap = await db.ref("locais").once("value");
+      const locais = snap.val();
+
+      if (!locais) {
+        container.innerHTML = "<p>Nenhum dispositivo salvo.</p>";
+        return;
+      }
+
+      Object.entries(locais).forEach(([chave, dado]) => {
+        const btn = document.createElement("button");
+        btn.textContent = "🔌 Conectar: " + dado.name;
+        btn.className = "device-btn";
+        btn.onclick = () => conectar(dado.id, dado.name);
+        container.appendChild(btn);
       });
     }
 
-    function disconnectAll() {
-      connectedDevices.forEach(d => {
-        if (d.gatt && d.gatt.connected) d.gatt.disconnect();
-      });
-      connectedDevices = [];
-      alert("Todos os dispositivos foram desconectados.");
-    }
-
-    async function reconnectDevice() {
+    async function conectar(id, nome) {
       try {
-        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
-        connectedDevices.push(device);
-        alert(`Reconectado: ${device.name || "Sem Nome"}`);
-      } catch (error) {
-        console.error("Erro ao reconectar:", error);
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: nome }]
+        });
+
+        const server = await device.gatt.connect();
+        conexoes[nome] = server;
+
+        alert("Conectado a: " + nome);
+      } catch (e) {
+        alert("Erro ao conectar: " + e);
       }
     }
 
-    renderSavedDevices();
+    function desconectarTodos() {
+      for (let nome in conexoes) {
+        conexoes[nome].disconnect();
+      }
+      conexoes = {};
+      alert("Desconectado de todos");
+    }
+
+    carregarDispositivos();
   </script>
 </body>
 </html>
