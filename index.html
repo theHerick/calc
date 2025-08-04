@@ -36,8 +36,8 @@
 <body>
 
   <h2>Scanner BLE - LocSound</h2>
-  <button id="scanBtn">🔍 Procurar Beacon</button>
-  <div id="status">Aguardando...</div>
+  <button id="scanBtn">🔐 Autorizar e Procurar Beacon</button>
+  <div id="status">Clique no botão para iniciar o escaneamento.</div>
 
   <script>
     document.getElementById('scanBtn').addEventListener('click', async () => {
@@ -48,7 +48,16 @@
         return;
       }
 
+      // Mostrar mensagem inicial de permissão
+      const confirmar = confirm("Este site deseja acessar dispositivos Bluetooth próximos.\nVocê permite?");
+      if (!confirmar) {
+        status.textContent = "🔒 Permissão negada pelo usuário.";
+        return;
+      }
+
       try {
+        status.textContent = "🔍 Procurando dispositivos BLE próximos...";
+
         const device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: []
