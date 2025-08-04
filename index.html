@@ -6,164 +6,94 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
+      padding: 30px;
       background: #f0f0f0;
       text-align: center;
     }
+
     button {
       padding: 10px 20px;
-      margin: 5px;
+      margin: 10px;
+      font-size: 16px;
       cursor: pointer;
     }
-    .device {
-      background: white;
+
+    #devices, #savedDevices {
+      margin-top: 30px;
+    }
+
+    .device-btn {
+      display: block;
       margin: 10px auto;
+      background-color: #007bff;
+      color: white;
+      border: none;
       padding: 10px;
-      border-radius: 10px;
-      max-width: 300px;
+      border-radius: 5px;
+      width: 80%;
     }
   </style>
 </head>
 <body>
-  <h1>Dispositivos LocSound</h1>
-  <button onclick="scanDevices()">🔍 Escanear</button>
+  <h1>LocSound BLE Scanner</h1>
+  <button onclick="scanBLE()">🔍 Escanear Dispositivos</button>
   <div id="devices"></div>
-  <h2>Selecionados</h2>
-  <div id="selecionados"></div>
+  <h2>🔒 Salvos</h2>
+  <div id="savedDevices"></div>
 
-  <!-- Firebase SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  <script>
+    const savedKey = "locsound_saved_devices";
 
-    // Configuração do Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyBD6yjWumcmaugkoKlStcsKWcMXwTK2DLc",
-      authDomain: "locsound-b4f27.firebaseapp.com",
-      databaseURL: "https://locsound-b4f27-default-rtdb.firebaseio.com",
-      projectId: "locsound-b4f27",
-      storageBucket: "locsound-b4f27.appspot.com",
-      messagingSenderId: "592998466073",
-      appId: "1:592998466073:web:4c47763505096354fd6088",
-      measurementId: "G-Q8NEQQVS1J"
-    };
-
-    // Inicializar Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth();
-
-    let selectedDevices = [];
-
-    // Autenticação anônima para liberar acesso mesmo com regras falsas
-    signInAnonymously(auth)
-      .then(() => {
-        loadSelectedDevices();
-      })
-      .catch(error => {
-        console.error("Erro ao autenticar:", error);
-      });
-
-    // Escanear dispositivos BLE
-    async function scanDevices() {
+    async function scanBLE() {
       try {
         const device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: []
         });
 
-        // Criar botão para adicionar aos favoritos
-        const div = document.createElement("div");
-        div.className = "device";
-        div.innerHTML = `
-          <strong>${device.name || "Sem nome"}</strong><br>
-          ID: ${device.id}<br>
-          <button onclick="addToFavorites('${device.name}', '${device.id}')">⭐ Selecionar</button>
-        `;
-        document.getElementById("devices").appendChild(div);
+        showDevice(device.name || "Sem nome", device.id, true);
       } catch (error) {
-        console.error("Erro ao escanear dispositivo:", error);
+        console.error("Erro ao escanear:", error);
         alert("Erro ao escanear: " + error.message);
       }
     }
 
-    // Adicionar ao Firebase
-    function addToFavorites(name, id) {
-      const refPath = ref(db, "selecionados/" + id.replaceAll(":", "_"));
-      set(refPath, {
-        name: name || "Sem nome",
-        id: id
-      }).then(() => {
-        alert("Dispositivo salvo com sucesso!");
-        loadSelectedDevices(); // Atualiza lista
-      }).catch(error => {
-        alert("Erro ao salvar: " + error.message);
-      });
+    function showDevice(name, id, save = false) {
+      const container = document.getElementById("savedDevices");
+
+      const btn = document.createElement("button");
+      btn.className = "device-btn";
+      btn.textContent = `🔗 ${name}`;
+      btn.onclick = () => connectToDevice(name);
+      container.appendChild(btn);
+
+      if (save) {
+        let saved = JSON.parse(localStorage.getItem(savedKey)) || [];
+        if (!saved.some(d => d.id === id)) {
+          saved.push({ name, id });
+          localStorage.setItem(savedKey, JSON.stringify(saved));
+        }
+      }
     }
 
-    // Carregar selecionados do Firebase
-    function loadSelectedDevices() {
-      const selecionadosDiv = document.getElementById("selecionados");
-      selecionadosDiv.innerHTML = "";
-
-      const dbRef = ref(db, "selecionados");
-      onValue(dbRef, snapshot => {
-        const data = snapshot.val();
-        if (!data) return;
-
-        Object.values(data).forEach(device => {
-          const container = document.createElement("div");
-          container.className = "device";
-
-          const btn = document.createElement("button");
-          btn.textContent = `🔌 Conectar a ${device.name}`;
-          btn.onclick = () => connectToDevice(device.id);
-
-          const btnDisc = document.createElement("button");
-          btnDisc.textContent = "❌ Desconectar";
-          btnDisc.onclick = () => disconnectDevice();
-
-          container.innerHTML = `<strong>${device.name}</strong><br>ID: ${device.id}<br>`;
-          container.appendChild(btn);
-          container.appendChild(btnDisc);
-          selecionadosDiv.appendChild(container);
-        });
-      });
-    }
-
-    let connectedDevice = null;
-
-    // Conectar
-    async function connectToDevice(deviceId) {
+    async function connectToDevice(name) {
       try {
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: deviceId }],
-          optionalServices: []
+          filters: [{ name }]
         });
-        connectedDevice = device;
-        await device.gatt.connect();
-        alert("Conectado a " + device.name);
+        const server = await device.gatt.connect();
+        alert("Conectado com sucesso a " + name);
+        // Aqui você pode fazer algo com o `server`
       } catch (error) {
-        alert("Erro ao conectar: " + error.message);
+        alert("Erro ao conectar com " + name + ": " + error.message);
       }
     }
 
-    // Desconectar
-    function disconnectDevice() {
-      if (connectedDevice && connectedDevice.gatt.connected) {
-        connectedDevice.gatt.disconnect();
-        alert("Desconectado");
-      } else {
-        alert("Nenhum dispositivo conectado");
-      }
-    }
-
-    // Expor funções ao escopo global
-    window.scanDevices = scanDevices;
-    window.addToFavorites = addToFavorites;
-    window.connectToDevice = connectToDevice;
-    window.disconnectDevice = disconnectDevice;
+    // Carrega dispositivos salvos ao iniciar
+    window.onload = () => {
+      const saved = JSON.parse(localStorage.getItem(savedKey)) || [];
+      saved.forEach(d => showDevice(d.name, d.id, false));
+    };
   </script>
 </body>
 </html>
