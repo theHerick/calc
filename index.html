@@ -1,19 +1,32 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>LocSound BLE com Firebase</title>
+  <meta charset="UTF-8">
+  <title>LocSound BLE + Firebase</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f5f5f5; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+    .device-btn { display: block; margin: 5px auto; background: #d9f0ff; border-radius: 8px; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>LocSound - Scanner BLE</h1>
+  <button onclick="scanBLE()">🔍 Escanear Dispositivos</button>
+  <div id="deviceList"></div>
+  <h3>Dispositivos salvos</h3>
+  <div id="savedList"></div>
+  <button onclick="disconnectAll()">🔌 Desconectar de Todos</button>
+
   <script type="module">
-    // Importa os módulos do Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBD6yjWumcmaugkoKlStcsKWcMXwTK2DLc",
       authDomain: "locsound-b4f27.firebaseapp.com",
       databaseURL: "https://locsound-b4f27-default-rtdb.firebaseio.com",
       projectId: "locsound-b4f27",
-      storageBucket: "locsound-b4f27.firebasestorage.app",
+      storageBucket: "locsound-b4f27.appspot.com",
       messagingSenderId: "592998466073",
       appId: "1:592998466073:web:4c47763505096354fd6088",
       measurementId: "G-Q8NEQQVS1J"
@@ -22,91 +35,71 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let usuario = null;
+    const userId = "herick"; // pode usar nome de conta no futuro
 
-    window.onload = () => {
-      document.getElementById('btnLogin').onclick = () => {
-        const nome = document.getElementById('inputUsuario').value.trim();
-        if (!nome) {
-          alert('Digite seu nome de usuário');
-          return;
-        }
-        usuario = nome;
-        document.getElementById('loginDiv').style.display = 'none';
-        document.getElementById('appDiv').style.display = 'block';
-        carregarDispositivosFirebase();
-      };
+    let connectedDevices = [];
 
-      document.getElementById('btnScan').onclick = scanDispositivo;
-    };
-
-    async function scanDispositivo() {
-      if (!usuario) {
-        alert('Faça login primeiro');
-        return;
-      }
-      if (!navigator.bluetooth) {
-        alert('Seu navegador não suporta Web Bluetooth');
-        return;
-      }
-
-      try {
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'LocSound' }],
-          optionalServices: ['battery_service']
-        });
-
-        // Salvar no Firebase
-        const dispositivosRef = ref(db, `usuarios/${usuario}/dispositivos`);
-        await push(dispositivosRef, {
-          nome: device.name || 'Sem nome',
-          id: device.id,
-          conectadoEm: Date.now()
-        });
-
-        alert(`Dispositivo ${device.name} salvo com sucesso!`);
-        carregarDispositivosFirebase();
-
-      } catch (e) {
-        alert('Erro ao escanear dispositivo: ' + e.message);
-      }
-    }
-
-    function carregarDispositivosFirebase() {
-      const dispositivosRef = ref(db, `usuarios/${usuario}/dispositivos`);
-      const lista = document.getElementById('listaDispositivos');
-      lista.innerHTML = 'Carregando...';
-
-      onValue(dispositivosRef, (snapshot) => {
-        const dados = snapshot.val();
-        lista.innerHTML = '';
-        if (!dados) {
-          lista.innerHTML = '<p>Nenhum dispositivo salvo.</p>';
-          return;
-        }
-        Object.entries(dados).forEach(([key, valor]) => {
-          const div = document.createElement('div');
-          div.textContent = `${valor.nome} (ID: ${valor.id}) - conectado em: ${new Date(valor.conectadoEm).toLocaleString()}`;
-          lista.appendChild(div);
-        });
-      }, {
-        onlyOnce: false
+    function saveDeviceToFirebase(name, id) {
+      set(ref(db, `usuarios/${userId}/dispositivos/${id}`), {
+        name: name,
+        id: id
       });
     }
+
+    async function scanBLE() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true
+        });
+        connectedDevices.push(device);
+        saveDeviceToFirebase(device.name || "Sem Nome", device.id);
+        alert(`Dispositivo encontrado: ${device.name || "Sem Nome"}`);
+      } catch (error) {
+        console.error("Erro ao escanear dispositivo:", error);
+      }
+    }
+
+    function renderSavedDevices() {
+      const savedList = document.getElementById("savedList");
+      savedList.innerHTML = "Carregando...";
+
+      const userRef = ref(db, `usuarios/${userId}/dispositivos`);
+      onValue(userRef, (snapshot) => {
+        savedList.innerHTML = "";
+        const data = snapshot.val();
+        if (data) {
+          Object.values(data).forEach((dev) => {
+            const btn = document.createElement("button");
+            btn.textContent = `🔗 ${dev.name}`;
+            btn.className = "device-btn";
+            btn.onclick = () => reconnectDevice(); // reconectar
+            savedList.appendChild(btn);
+          });
+        } else {
+          savedList.innerHTML = "Nenhum salvo ainda.";
+        }
+      });
+    }
+
+    function disconnectAll() {
+      connectedDevices.forEach(d => {
+        if (d.gatt && d.gatt.connected) d.gatt.disconnect();
+      });
+      connectedDevices = [];
+      alert("Todos os dispositivos foram desconectados.");
+    }
+
+    async function reconnectDevice() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+        connectedDevices.push(device);
+        alert(`Reconectado: ${device.name || "Sem Nome"}`);
+      } catch (error) {
+        console.error("Erro ao reconectar:", error);
+      }
+    }
+
+    renderSavedDevices();
   </script>
-</head>
-<body style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin:auto;">
-  <h2>LocSound BLE com Firebase</h2>
-
-  <div id="loginDiv">
-    <input type="text" id="inputUsuario" placeholder="Digite seu nome" style="padding: 8px; width: 80%;" />
-    <button id="btnLogin" style="padding: 10px;">Login</button>
-  </div>
-
-  <div id="appDiv" style="display:none;">
-    <button id="btnScan" style="padding: 15px; width: 100%; margin-top: 10px;">🔍 Scanear Dispositivo LocSound</button>
-    <h3>Dispositivos Salvos</h3>
-    <div id="listaDispositivos" style="border: 1px solid #ccc; padding: 10px; min-height: 100px;"></div>
-  </div>
 </body>
 </html>
