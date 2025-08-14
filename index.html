@@ -291,15 +291,16 @@
   <div style="display:flex; gap:8px; margin:6px 2px 14px; flex-wrap:wrap;">
     <button type="button" class="secondary" style="padding:8px 14px;font-size:12px;" onclick="adicionarCarro()">+ Adicionar Carro</button>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 4px 22px;align-items:flex-end;">
-    <div style="flex:1;min-width:160px;">
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 4px 22px;align-items:flex-start;">
+    <div style="flex:1;min-width:180px;display:flex;flex-direction:column;">
       <label style="font-size:12px;">Pontos de carga simultâneos <span class="unit">#</span></label>
       <input class="field" id="numChargers" type="number" min="1" step="1" value="1">
+      <div class="hint" style="font-size:10px;margin-top:4px;">Qtd. de veículos que podem carregar ao mesmo tempo (divide potência FV entre eles).</div>
     </div>
-    <div style="flex:1;min-width:160px;">
+    <div style="flex:1;min-width:200px;display:flex;flex-direction:column;">
       <label style="font-size:12px;">Fator médio taper (≥80% SOC)<span class="unit"> (0-1)</span></label>
       <input class="field" id="taperFactorInput" type="number" min="0.1" max="1" step="0.05" value="0.55">
-      <div class="hint" style="font-size:10px;margin-top:4px;">Média relativa de potência na zona 80–100%. Default 0.55 (~redução gradual até 10%).</div>
+      <div class="hint" style="font-size:10px;margin-top:4px;">Potência média relativa na faixa 80–100% (1 = sem redução). Default 0.55.</div>
     </div>
   </div>
   <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
