@@ -214,62 +214,31 @@
     <!-- Entrada -->
     <div class="panel">
       <div class="section-title">⚡ Especificações do Carro</div>
-      <div class="grid">
-        <div>
-          <label>Capacidade da bateria <span class="unit">kWh</span></label>
-          <input class="field" id="capNominal" type="number" min="1" step="0.1" value="60">
-          <div class="hint">Se não souber a utilizável, use a nominal e ajuste o % utilizável.</div>
+
+        <div id="carrosContainer"></div>
+        <div class="actions">
+          <button id="addCarroBtn" type="button">Adicionar Carro</button>
         </div>
-        <div>
-          <label>Capacidade utilizável <span class="unit">%</span></label>
-          <input class="field" id="percUtil" type="number" min="50" max="100" step="1" value="95">
-          <div class="hint">Percentual da bateria efetivamente usado (ex.: 95%).</div>
-        </div>
-        <div>
-          <label>SOC inicial <span class="unit">%</span></label>
-          <input class="field" id="socIni" type="number" min="0" max="100" step="1" value="20">
-        </div>
-        <div>
-          <label>SOC final <span class="unit">%</span></label>
-          <input class="field" id="socFim" type="number" min="1" max="100" step="1" value="100">
-        </div>
-        <div>
-          <label>Eficiência global FV→bateria <span class="unit">%</span></label>
-          <input class="field" id="etaGlobal" type="number" min="60" max="99" step="1" value="85">
-          <div class="hint">Perdas de inversor, cabos, EVSE e carregador onboard.</div>
-        </div>
-        <div>
-          <label>Potência máx. do carregador onboard <span class="unit">kW</span></label>
-          <input class="field" id="onboardKW" type="number" min="0" step="0.1" value="7.4">
-          <div class="hint">Usado para estimar limite teórico de taxa de carga.</div>
-        </div>
-      </div>
 
       <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
-      <div class="grid">
-        <div>
-          <label>Potência do array <span class="unit">kWp</span></label>
-          <input class="field" id="kWp" type="number" min="0.1" step="0.1" value="2.0">
+
+        <div id="placasContainer"></div>
+        <div class="actions">
+          <button id="addPlacaBtn" type="button">Adicionar Placa</button>
         </div>
-        <div>
-          <label>Performance Ratio (PR) <span class="unit">%</span></label>
-          <input class="field" id="pr" type="number" min="50" max="95" step="1" value="75">
-          <div class="hint">Perdas por temperatura, sujeira, sombreamento, etc.</div>
-        </div>
-        <div>
-          <label>Horas de Sol Pleno (PSH) <span class="unit">h/dia</span></label>
-          <input class="field" id="psh" type="number" min="1" step="0.1" value="5">
-          <div class="hint">Média da sua cidade (ex.: 4–6 h/dia).</div>
-        </div>
-        <div>
-          <label>Observação</label>
-          <input class="field" id="obs" type="text" placeholder="Orientação, inclinação, sombreamento... (opcional)">
-        </div>
-      </div>
 
       <div class="actions">
-        <button id="calcBtn">Calcular</button>
-        <button class="secondary" id="resetBtn">Limpar</button>
+          <button id="calcBtn">Calcular</button>
+          <button class="secondary" id="resetBtn">Limpar</button>
+          <button id="saveConfigBtn" type="button">Salvar Configuração</button>
+        </div>
+
+        <div style="margin-top:10px">
+          <label for="savedConfigs">Configurações Salvas:</label>
+          <select id="savedConfigs"></select>
+          <button id="loadConfigBtn" type="button">Carregar</button>
+          <button id="deleteConfigBtn" type="button">Excluir</button>
+        </div>
       </div>
 
       <details style="margin-top:12px">
@@ -348,6 +317,8 @@
   </footer>
   
 <script>
+
+// Utilitários
 function num(v, def=0){
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
@@ -373,46 +344,189 @@ function fmtDias(x){
   return x.toFixed(2) + ' dias';
 }
 
+// Carros dinâmicos
+function carroFields(id, values={}){
+  return `<div class="grid" style="margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+    <div><label>Nome do carro</label><input class="field" id="carroNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: EV1"></div>
+    <div><label>Capacidade da bateria <span class="unit">kWh</span></label><input class="field" id="capNominal${id}" type="number" min="1" step="0.1" value="${values.capNominal||60}"></div>
+    <div><label>Capacidade utilizável <span class="unit">%</span></label><input class="field" id="percUtil${id}" type="number" min="50" max="100" step="1" value="${values.percUtil||95}"></div>
+    <div><label>SOC inicial <span class="unit">%</span></label><input class="field" id="socIni${id}" type="number" min="0" max="100" step="1" value="${values.socIni||20}"></div>
+    <div><label>SOC final <span class="unit">%</span></label><input class="field" id="socFim${id}" type="number" min="1" max="100" step="1" value="${values.socFim||100}"></div>
+    <div><label>Eficiência global FV→bateria <span class="unit">%</span></label><input class="field" id="etaGlobal${id}" type="number" min="60" max="99" step="1" value="${values.etaGlobal||85}"></div>
+    <div><label>Potência máx. do carregador onboard <span class="unit">kW</span></label><input class="field" id="onboardKW${id}" type="number" min="0" step="0.1" value="${values.onboardKW||7.4}"></div>
+    <div style="grid-column:1/3;text-align:right"><button type="button" class="secondary" onclick="removerCarro(${id})">Remover</button></div>
+  </div>`;
+}
+function placaFields(id, values={}){
+  return `<div class="grid" style="margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+    <div><label>Nome da placa</label><input class="field" id="placaNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: FV1"></div>
+    <div><label>Potência do array <span class="unit">kWp</span></label><input class="field" id="kWp${id}" type="number" min="0.1" step="0.1" value="${values.kWp||2.0}"></div>
+    <div><label>Performance Ratio (PR) <span class="unit">%</span></label><input class="field" id="pr${id}" type="number" min="50" max="95" step="1" value="${values.pr||75}"></div>
+    <div><label>Horas de Sol Pleno (PSH) <span class="unit">h/dia</span></label><input class="field" id="psh${id}" type="number" min="1" step="0.1" value="${values.psh||5}"></div>
+    <div><label>Observação</label><input class="field" id="obs${id}" type="text" value="${values.obs||''}" placeholder="Orientação, inclinação, sombreamento... (opcional)"></div>
+    <div style="grid-column:1/3;text-align:right"><button type="button" class="secondary" onclick="removerPlaca(${id})">Remover</button></div>
+  </div>`;
+}
+
+let carros = [{id:0}];
+let placas = [{id:0}];
+let nextCarroId = 1;
+let nextPlacaId = 1;
+
+function renderCarros(){
+  const container = document.getElementById('carrosContainer');
+  container.innerHTML = carros.map(c=>carroFields(c.id, c)).join('');
+}
+function renderPlacas(){
+  const container = document.getElementById('placasContainer');
+  container.innerHTML = placas.map(p=>placaFields(p.id, p)).join('');
+}
+function adicionarCarro(){
+  carros.push({id:nextCarroId++});
+  renderCarros();
+}
+function removerCarro(id){
+  carros = carros.filter(c=>c.id!==id);
+  if(carros.length===0){carros=[{id:nextCarroId++}];}
+  renderCarros();
+}
+function adicionarPlaca(){
+  placas.push({id:nextPlacaId++});
+  renderPlacas();
+}
+function removerPlaca(id){
+  placas = placas.filter(p=>p.id!==id);
+  if(placas.length===0){placas=[{id:nextPlacaId++}];}
+  renderPlacas();
+}
+
+// Salvar/Carregar configurações
+function getConfigFromFields(){
+  // Carros
+  let carrosData = carros.map(c=>({
+    id: c.id,
+    nome: document.getElementById('carroNome'+c.id)?.value||'',
+    capNominal: num(document.getElementById('capNominal'+c.id)?.value, 60),
+    percUtil: num(document.getElementById('percUtil'+c.id)?.value, 95),
+    socIni: num(document.getElementById('socIni'+c.id)?.value, 20),
+    socFim: num(document.getElementById('socFim'+c.id)?.value, 100),
+    etaGlobal: num(document.getElementById('etaGlobal'+c.id)?.value, 85),
+    onboardKW: num(document.getElementById('onboardKW'+c.id)?.value, 7.4)
+  }));
+  // Placas
+  let placasData = placas.map(p=>({
+    id: p.id,
+    nome: document.getElementById('placaNome'+p.id)?.value||'',
+    kWp: num(document.getElementById('kWp'+p.id)?.value, 2.0),
+    pr: num(document.getElementById('pr'+p.id)?.value, 75),
+    psh: num(document.getElementById('psh'+p.id)?.value, 5),
+    obs: document.getElementById('obs'+p.id)?.value||''
+  }));
+  return {carros:carrosData, placas:placasData};
+}
+
+function saveConfig(){
+  const nome = prompt('Nome para salvar configuração:');
+  if(!nome) return;
+  let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+  configs[nome] = getConfigFromFields();
+  localStorage.setItem('evConfigs', JSON.stringify(configs));
+  updateSavedConfigs();
+  alert('Configuração salva!');
+}
+function updateSavedConfigs(){
+  let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+  const select = document.getElementById('savedConfigs');
+  select.innerHTML = Object.keys(configs).map(n=>`<option value="${n}">${n}</option>`).join('');
+}
+function loadConfig(){
+  const select = document.getElementById('savedConfigs');
+  const nome = select.value;
+  if(!nome) return;
+  let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+  const conf = configs[nome];
+  if(!conf) return;
+  carros = conf.carros.map((c,i)=>({...c,id:i}));
+  placas = conf.placas.map((p,i)=>({...p,id:i}));
+  nextCarroId = carros.length;
+  nextPlacaId = placas.length;
+  renderCarros();
+  renderPlacas();
+}
+function deleteConfig(){
+  const select = document.getElementById('savedConfigs');
+  const nome = select.value;
+  if(!nome) return;
+  let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+  delete configs[nome];
+  localStorage.setItem('evConfigs', JSON.stringify(configs));
+  updateSavedConfigs();
+}
+
+// Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
+
 function calcular(){
-  // Entradas
-  const capNominal = num(document.getElementById('capNominal').value, 60);
-  const percUtil   = clamp(num(document.getElementById('percUtil').value, 95), 0, 100) / 100.0;
-  const socIni     = clamp(num(document.getElementById('socIni').value, 20), 0, 100) / 100.0;
-  const socFim     = clamp(num(document.getElementById('socFim').value, 100), 0, 100) / 100.0;
-  const etaGlobal  = clamp(num(document.getElementById('etaGlobal').value, 85), 1, 100) / 100.0;
-  const onboardKW  = Math.max(0, num(document.getElementById('onboardKW').value, 7.4));
-
-  const kWp        = Math.max(0, num(document.getElementById('kWp').value, 2.0));
-  const pr         = clamp(num(document.getElementById('pr').value, 75), 1, 100) / 100.0;
-  const psh        = Math.max(0, num(document.getElementById('psh').value, 5));
-
-  // Validações básicas
+  // Somar energia de todos os carros
+  let E_bat_total = 0;
+  let E_pv_total = 0;
+  let onboardKW_total = 0;
+  let etaGlobal_min = 1;
   let alerts = [];
-  if (socFim <= socIni) alerts.push("O SOC final deve ser maior que o SOC inicial.");
-  if (kWp <= 0) alerts.push("Defina a potência do array (kWp) > 0.");
-  if (psh <= 0) alerts.push("Defina as horas de sol pleno (PSH) > 0.");
+  let nomesCarros = [];
+  carros.forEach(c => {
+    const capNominal = num(document.getElementById('capNominal'+c.id)?.value, 60);
+    const percUtil   = clamp(num(document.getElementById('percUtil'+c.id)?.value, 95), 0, 100) / 100.0;
+    const socIni     = clamp(num(document.getElementById('socIni'+c.id)?.value, 20), 0, 100) / 100.0;
+    const socFim     = clamp(num(document.getElementById('socFim'+c.id)?.value, 100), 0, 100) / 100.0;
+    const etaGlobal  = clamp(num(document.getElementById('etaGlobal'+c.id)?.value, 85), 1, 100) / 100.0;
+    const onboardKW  = Math.max(0, num(document.getElementById('onboardKW'+c.id)?.value, 7.4));
+    nomesCarros.push(document.getElementById('carroNome'+c.id)?.value||'Carro '+(c.id+1));
+    if (socFim <= socIni) alerts.push(`O SOC final do carro ${nomesCarros[nomesCarros.length-1]} deve ser maior que o SOC inicial.`);
+    const capUtil_kWh = capNominal * percUtil;
+    const deltaSOC    = Math.max(0, socFim - socIni);
+    const E_bat       = capUtil_kWh * deltaSOC;
+    const E_pv        = E_bat > 0 ? E_bat / etaGlobal : 0;
+    E_bat_total += E_bat;
+    E_pv_total += E_pv;
+    onboardKW_total += onboardKW;
+    if (etaGlobal < etaGlobal_min) etaGlobal_min = etaGlobal;
+    if (etaGlobal < 0.75) alerts.push(`Eficiência global baixa no carro ${nomesCarros[nomesCarros.length-1]}`);
+  });
 
-  // Cálculos
-  const capUtil_kWh = capNominal * percUtil;
-  const deltaSOC    = Math.max(0, socFim - socIni);
-  const E_bat       = capUtil_kWh * deltaSOC; // kWh que entram na bateria
-  const E_pv        = E_bat > 0 ? E_bat / etaGlobal : 0; // kWh que o FV precisa gerar (até a bateria)
-  const E_dia       = kWp * psh * pr; // kWh/dia
-  const dias        = (E_dia > 0) ? (E_pv / E_dia) : Infinity;
-  const horasSol    = (kWp*pr > 0) ? (E_pv / (kWp * pr)) : Infinity;
+  // Somar potência e geração das placas
+  let kWp_total = 0;
+  let pr_total = 0;
+  let psh_total = 0;
+  let nomesPlacas = [];
+  placas.forEach(p => {
+    const kWp = Math.max(0, num(document.getElementById('kWp'+p.id)?.value, 2.0));
+    const pr  = clamp(num(document.getElementById('pr'+p.id)?.value, 75), 1, 100) / 100.0;
+    const psh = Math.max(0, num(document.getElementById('psh'+p.id)?.value, 5));
+    nomesPlacas.push(document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1));
+    if (kWp <= 0) alerts.push(`Defina a potência do array (kWp) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
+    if (psh <= 0) alerts.push(`Defina as horas de sol pleno (PSH) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
+    kWp_total += kWp;
+    pr_total += pr;
+    psh_total += psh;
+  });
+  // Média dos PR e PSH
+  pr_total = placas.length ? pr_total/placas.length : 0;
+  psh_total = placas.length ? psh_total/placas.length : 0;
 
-  // Potência de pico útil do FV (aprox) e limite teórico de tempo por potência
-  const P_pico_FV   = kWp * pr;                // kW (já com PR)
-  const P_lim       = Math.max(0, Math.min(onboardKW || Infinity, P_pico_FV || Infinity));
-  const t_min       = (P_lim > 0) ? (E_bat / P_lim) : Infinity; // horas (idealizado, sem perdas dinâmicas)
+  // Cálculos totais
+  const E_dia = kWp_total * psh_total * pr_total;
+  const dias = (E_dia > 0) ? (E_pv_total / E_dia) : Infinity;
+  const horasSol = (kWp_total*pr_total > 0) ? (E_pv_total / (kWp_total * pr_total)) : Infinity;
+  const P_pico_FV = kWp_total * pr_total;
+  const P_lim = Math.max(0, Math.min(onboardKW_total || Infinity, P_pico_FV || Infinity));
+  const t_min = (P_lim > 0) ? (E_bat_total / P_lim) : Infinity;
 
-  if (etaGlobal < 0.75) alerts.push("Eficiência global baixa — verifique perdas (cabos, inversor, EVSE).");
   if (P_pico_FV < 1.0) alerts.push("Potência de pico FV baixa; carregamento será bem lento.");
   if (!Number.isFinite(dias) || !Number.isFinite(horasSol)) alerts.push("Verifique os campos: há valores inválidos.");
 
-  // Exibir KPIs
-  document.getElementById('kpiEbat').innerHTML  = `<span class="ok">${fmtKWh(E_bat)}</span>`;
-  document.getElementById('kpiEpv').innerHTML   = fmtKWh(E_pv);
+  // Exibir KPIs totais
+  document.getElementById('kpiEbat').innerHTML  = `<span class="ok">${fmtKWh(E_bat_total)}</span>`;
+  document.getElementById('kpiEpv').innerHTML   = fmtKWh(E_pv_total);
   document.getElementById('kpiEdia').innerHTML  = fmtKWh(E_dia) + ` <small>(por dia)</small>`;
   document.getElementById('kpiDias').innerHTML  = fmtDias(dias);
   document.getElementById('kpiHoras').innerHTML = fmtH(horasSol);
@@ -430,18 +544,12 @@ function calcular(){
 }
 
 function limpar(){
-  document.getElementById('capNominal').value = 60;
-  document.getElementById('percUtil').value = 95;
-  document.getElementById('socIni').value = 20;
-  document.getElementById('socFim').value = 100;
-  document.getElementById('etaGlobal').value = 85;
-  document.getElementById('onboardKW').value = 7.4;
-
-  document.getElementById('kWp').value = 2.0;
-  document.getElementById('pr').value = 75;
-  document.getElementById('psh').value = 5;
-  document.getElementById('obs').value = '';
-
+  carros = [{id:0}];
+  placas = [{id:0}];
+  nextCarroId = 1;
+  nextPlacaId = 1;
+  renderCarros();
+  renderPlacas();
   // limpa resultados
   ['kpiEbat','kpiEpv','kpiEdia','kpiDias','kpiHoras','kpiTmin'].forEach(id=>{
     document.getElementById(id).textContent = '—';
@@ -450,11 +558,19 @@ function limpar(){
   document.getElementById('alertText').textContent = '';
 }
 
+// Eventos
+document.getElementById('addCarroBtn').addEventListener('click', adicionarCarro);
+document.getElementById('addPlacaBtn').addEventListener('click', adicionarPlaca);
 document.getElementById('calcBtn').addEventListener('click', calcular);
 document.getElementById('resetBtn').addEventListener('click', limpar);
+document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+document.getElementById('loadConfigBtn').addEventListener('click', loadConfig);
+document.getElementById('deleteConfigBtn').addEventListener('click', deleteConfig);
 
-
-// cálculo inicial
+// Inicialização
+renderCarros();
+renderPlacas();
+updateSavedConfigs();
 calcular();
 </script>
 </body>
