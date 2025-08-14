@@ -270,55 +270,8 @@
       </div>
       <!-- Botão único para abrir modal de salvar/modelos -->
       <div style="margin-top:18px; display:flex; justify-content:flex-end;">
-        <button id="openSaveModalBtn" type="button" style="min-width:120px;">💾 Salvar / Modelos</button>
+        <button id="openSaveModalBtn" type="button" style="min-width:140px;">💾 Salvar / Modelos</button>
       </div>
-      <div id="saveModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(11,16,32,0.65); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:32px 28px; min-width:340px; max-width:96vw; margin:auto; position:relative;">
-          <button type="button" id="closeSaveModalBtn" style="position:absolute; top:16px; right:18px; background:transparent; color:var(--err); font-size:22px; border:none; cursor:pointer;">×</button>
-          <h3 style="color:var(--accent); margin-top:0; margin-bottom:18px; font-size:20px;">Salvar / Modelos</h3>
-          <div style="display:flex; flex-direction:column; gap:22px; max-height:70vh; overflow-y:auto;">
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <label for="savedConfigs" style="font-weight:600; color:var(--accent);">Configurações</label>
-              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                <input id="configNameInput" class="field" placeholder="Nome da configuração" style="flex:1; min-width:160px;">
-                <button id="saveConfigModalBtn" type="button">Salvar</button>
-              </div>
-              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-                <select id="savedConfigs" style="flex:1; min-width:160px;"></select>
-                <button id="loadConfigBtn" type="button">Carregar</button>
-                <button id="deleteConfigBtn" type="button">Excluir</button>
-              </div>
-            </div>
-            <div>
-              <label for="savedCarModels">Modelos de Carro:</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input id="carModelNameInput" class="field" placeholder="Nome do modelo" style="flex:1; min-width:130px;">
-                <select id="carSelect" title="Carro alvo"></select>
-                <button id="saveCarModelBtn" type="button" title="Salvar modelo do carro selecionado">Salvar</button>
-              </div>
-              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-                <select id="savedCarModels" style="flex:1; min-width:160px;"></select>
-                <select id="carSelectApply" title="Aplicar em" style="min-width:90px;"></select>
-                <button id="loadCarModelBtn" type="button" title="Aplicar modelo no carro escolhido">Aplicar</button>
-              </div>
-            </div>
-            <div>
-              <label for="savedPlacaModels">Modelos de Placa:</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input id="placaModelNameInput" class="field" placeholder="Nome do modelo" style="flex:1; min-width:130px;">
-                <select id="placaSelect" title="Placa alvo"></select>
-                <button id="savePlacaModelBtn" type="button" title="Salvar modelo da placa selecionada">Salvar</button>
-              </div>
-              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-                <select id="savedPlacaModels" style="flex:1; min-width:160px;"></select>
-                <select id="placaSelectApply" title="Aplicar em" style="min-width:90px;"></select>
-                <button id="loadPlacaModelBtn" type="button" title="Aplicar modelo na placa escolhida">Aplicar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-document.addEventListener('DOMContentLoaded', function(){
-  </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
         <div class="hint">
@@ -390,7 +343,73 @@ document.addEventListener('DOMContentLoaded', function(){
         Desenvolvido por Tiburski, Herick Betin • 2025
   </footer>
   
+  <!-- Modal global (fora do panel para evitar stacking context) -->
+  <div id="saveModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <button type="button" id="closeSaveModalBtn" class="modal-close" title="Fechar">×</button>
+      <h3 class="modal-title">Salvar / Modelos</h3>
+      <div class="modal-content">
+        <div class="modal-block">
+          <label for="savedConfigs" class="modal-block-title">Configurações</label>
+          <div class="modal-row">
+            <input id="configNameInput" class="field" placeholder="Nome da configuração">
+            <button id="saveConfigModalBtn" type="button">Salvar</button>
+          </div>
+          <div class="modal-row">
+            <select id="savedConfigs" class="flex"></select>
+            <button id="loadConfigBtn" type="button">Carregar</button>
+            <button id="deleteConfigBtn" type="button">Excluir</button>
+          </div>
+        </div>
+        <div class="modal-block">
+          <label for="savedCarModels" class="modal-block-title">Modelos de Carro</label>
+          <div class="modal-row">
+            <input id="carModelNameInput" class="field" placeholder="Nome do modelo">
+            <select id="carSelect" title="Carro alvo"></select>
+            <button id="saveCarModelBtn" type="button">Salvar</button>
+          </div>
+          <div class="modal-row">
+            <select id="savedCarModels" class="flex"></select>
+            <select id="carSelectApply" title="Aplicar em"></select>
+            <button id="loadCarModelBtn" type="button">Aplicar</button>
+          </div>
+        </div>
+        <div class="modal-block">
+          <label for="savedPlacaModels" class="modal-block-title">Modelos de Placa</label>
+          <div class="modal-row">
+            <input id="placaModelNameInput" class="field" placeholder="Nome do modelo">
+            <select id="placaSelect" title="Placa alvo"></select>
+            <button id="savePlacaModelBtn" type="button">Salvar</button>
+          </div>
+            <div class="modal-row">
+            <select id="savedPlacaModels" class="flex"></select>
+            <select id="placaSelectApply" title="Aplicar em"></select>
+            <button id="loadPlacaModelBtn" type="button">Aplicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script>
+// Estilos extras do modal injetados via JS/CSS inline para manter tudo em um arquivo
+(function(){
+  const style = document.createElement('style');
+  style.textContent = `
+  .modal-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,25,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100000;}
+  .modal-box{width:min(780px,92vw);max-height:80vh;overflow:auto;background:linear-gradient(180deg,var(--glass),rgba(255,255,255,0.04));border:1px solid rgba(255,255,255,0.22);border-radius:20px;box-shadow:0 18px 60px -8px rgba(0,0,0,0.55);padding:30px 26px 34px;position:relative;}
+  .modal-title{margin:0 0 18px;font-size:22px;letter-spacing:.5px;color:var(--accent);}
+  .modal-close{position:absolute;top:10px;right:12px;background:transparent;border:none;color:var(--err);font-size:26px;cursor:pointer;line-height:1;padding:2px 8px;border-radius:10px;}
+  .modal-close:hover{background:rgba(255,143,143,0.15);} 
+  .modal-content{display:flex;flex-direction:column;gap:26px;}
+  .modal-block-title{font-weight:600;color:var(--accent);margin-bottom:8px;display:block;}
+  .modal-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .modal-row .field, .modal-row select{flex:1;min-width:160px;}
+  body.modal-open{overflow:hidden;}
+  @media (max-width:640px){ .modal-box{padding:24px 18px;} .modal-row{flex-direction:column;align-items:stretch;} .modal-row .field, .modal-row select, .modal-row button{width:100%;} }
+  `;
+  document.head.appendChild(style);
+})();
 
 // Utilitários
 function num(v, def=0){
@@ -424,10 +443,12 @@ function initSaveModal(){
   const modal = document.getElementById('saveModal');
   const closeBtn = document.getElementById('closeSaveModalBtn');
   if(!openBtn || !modal || !closeBtn) return;
-  openBtn.addEventListener('click', ()=>{ modal.style.display='flex'; });
-  closeBtn.addEventListener('click', ()=>{ modal.style.display='none'; });
-  modal.addEventListener('click', (e)=>{ if(e.target === modal) modal.style.display='none'; });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') modal.style.display='none'; });
+  const open = ()=>{ modal.style.display='flex'; document.body.classList.add('modal-open'); };
+  const close = ()=>{ modal.style.display='none'; document.body.classList.remove('modal-open'); };
+  openBtn.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e)=>{ if(e.target === modal) close(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
 }
 
 // Carros dinâmicos
