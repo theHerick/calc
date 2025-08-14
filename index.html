@@ -365,6 +365,7 @@
             <input id="configNameInput" class="field" placeholder="Nome da configuração">
             <button id="saveConfigModalBtn" type="button">Salvar</button>
           </div>
+          <div id="configFeedback" style="margin-top:4px;font-size:11px;display:none;"></div>
           <div class="modal-row">
             <select id="savedConfigs" class="flex"></select>
             <button id="loadConfigBtn" type="button">Carregar</button>
@@ -387,6 +388,7 @@
             <select id="carSelectApply" title="Aplicar em"></select>
             <button id="loadCarModelBtn" type="button">Aplicar</button>
           </div>
+          <div id="carModelFeedback" style="margin-top:4px;font-size:11px;display:none;"></div>
         </div>
         <div class="modal-block">
           <div class="modal-block-head">
@@ -404,6 +406,7 @@
             <select id="placaSelectApply" title="Aplicar em"></select>
             <button id="loadPlacaModelBtn" type="button">Aplicar</button>
           </div>
+          <div id="placaModelFeedback" style="margin-top:4px;font-size:11px;display:none;"></div>
         </div>
       </div>
     </div>
@@ -794,13 +797,32 @@ function getConfigFromFields(){
 
 function saveConfig(){
   const input = document.getElementById('configNameInput');
-  const nome = input?.value?.trim() || prompt('Nome para salvar configuração:');
-  if(!nome) return;
-  let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
-  configs[nome] = getConfigFromFields();
-  localStorage.setItem('evConfigs', JSON.stringify(configs));
-  updateSavedConfigs();
-  alert('Configuração salva!');
+  const feedback = document.getElementById('configFeedback');
+  const btn = document.getElementById('saveConfigModalBtn');
+  const nome = input?.value?.trim();
+  if(!nome){
+    if(feedback){ feedback.style.display='block'; feedback.style.color='var(--warn)'; feedback.textContent='Informe um nome para salvar.'; }
+    return;
+  }
+  try{
+    let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+    const exists = !!configs[nome];
+    configs[nome] = getConfigFromFields();
+    localStorage.setItem('evConfigs', JSON.stringify(configs));
+  localStorage.setItem('evLastConfig', nome);
+    updateSavedConfigs();
+  // selecionar o recém salvo
+  const select = document.getElementById('savedConfigs');
+  if(select) select.value = nome;
+    if(feedback){
+      feedback.style.display='block';
+      feedback.style.color='var(--ok)';
+      feedback.textContent = exists? 'Configuração atualizada.' : 'Configuração salva.';
+    }
+    if(btn) { btn.disabled = true; setTimeout(()=>{ if(btn) btn.disabled=false; },600); }
+  }catch(e){
+    if(feedback){ feedback.style.display='block'; feedback.style.color='var(--err)'; feedback.textContent='Erro ao salvar (quota ou formato).'; }
+  }
 }
 function updateSavedConfigs(){
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
@@ -808,6 +830,9 @@ function updateSavedConfigs(){
   select.innerHTML = Object.keys(configs).map(n=>`<option value="${n}">${n}</option>`).join('');
   const badge = document.getElementById('countConfigs');
   if(badge) badge.textContent = Object.keys(configs).length;
+  // manter última seleção
+  const last = localStorage.getItem('evLastConfig');
+  if(last && select && configs[last]) select.value = last;
 }
 function loadConfig(){
   const select = document.getElementById('savedConfigs');
@@ -824,15 +849,23 @@ function loadConfig(){
   renderPlacas();
   updateSavedCarModels();
   updateSavedPlacaModels();
+  localStorage.setItem('evLastConfig', nome);
+  const input = document.getElementById('configNameInput');
+  if(input) input.value = nome;
+  const feedback = document.getElementById('configFeedback');
+  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--accent)'; feedback.textContent='Configuração carregada.'; }
 }
 function deleteConfig(){
   const select = document.getElementById('savedConfigs');
   const nome = select.value;
   if(!nome) return;
+  if(!confirm('Excluir configuração "'+nome+'"?')) return;
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
   delete configs[nome];
   localStorage.setItem('evConfigs', JSON.stringify(configs));
   updateSavedConfigs();
+  const feedback = document.getElementById('configFeedback');
+  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--warn)'; feedback.textContent='Configuração removida.'; }
 }
 
 // Salvar/Carregar modelos de carro
@@ -853,12 +886,13 @@ function saveCarModel(){
   const id = Number(targetSelect?.value ?? carros[0].id);
   const nomeInput = document.getElementById('carModelNameInput');
   const nome = nomeInput?.value?.trim();
+  const feedback = document.getElementById('carModelFeedback');
   if(!nome){ alert('Defina um nome para o modelo de carro.'); return; }
   let models = JSON.parse(localStorage.getItem('carModels')||'{}');
   models[nome] = getCarModelFromFields(id);
   localStorage.setItem('carModels', JSON.stringify(models));
   updateSavedCarModels();
-  alert('Modelo de carro salvo!');
+  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--ok)'; feedback.textContent='Modelo salvo.'; }
 }
 function updateSavedCarModels(){
   let models = JSON.parse(localStorage.getItem('carModels')||'{}');
@@ -909,12 +943,13 @@ function savePlacaModel(){
   const id = Number(targetSelect?.value ?? placas[0].id);
   const nomeInput = document.getElementById('placaModelNameInput');
   const nome = nomeInput?.value?.trim();
+  const feedback = document.getElementById('placaModelFeedback');
   if(!nome){ alert('Defina um nome para o modelo de placa.'); return; }
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
   models[nome] = getPlacaModelFromFields(id);
   localStorage.setItem('placaModels', JSON.stringify(models));
   updateSavedPlacaModels();
-  alert('Modelo de placa salvo!');
+  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--ok)'; feedback.textContent='Modelo salvo.'; }
 }
 function updateSavedPlacaModels(){
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
@@ -1060,6 +1095,33 @@ updateSavedCarModels();
 updateSavedPlacaModels();
 initSaveModal();
 calcular();
+
+// UI dinâmica para campo de nome da configuração
+const cfgInput = document.getElementById('configNameInput');
+const cfgBtn = document.getElementById('saveConfigModalBtn');
+if(cfgInput && cfgBtn){
+  const feedback = document.getElementById('configFeedback');
+  const sync = ()=>{
+    const v = cfgInput.value.trim();
+    cfgBtn.disabled = !v;
+    if(feedback) feedback.style.display='none';
+  };
+  cfgInput.addEventListener('input', sync);
+  sync();
+}
+
+// Auto-carregar última configuração (se existir)
+const lastCfg = localStorage.getItem('evLastConfig');
+if(lastCfg){
+  // garantir que select foi populado
+  setTimeout(()=>{
+    const sel = document.getElementById('savedConfigs');
+    if(sel && sel.querySelector(`option[value="${lastCfg}"]`)){
+      sel.value = lastCfg;
+      loadConfig();
+    }
+  },150);
+}
 </script>
 </body>
 </html>
