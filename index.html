@@ -810,31 +810,35 @@ let placas = [{id:0}];
 let nextCarroId = 1;
 let nextPlacaId = 1;
 
-function renderCarros(){
-  // Captura valores atuais antes de recriar HTML (evita perder alterações)
-  carros = carros.map(c=>({
-    ...c,
-    nome: document.getElementById('carroNome'+c.id)?.value || c.nome || '',
-    capNominal: num(document.getElementById('capNominal'+c.id)?.value, c.capNominal||60),
-    percUtil: num(document.getElementById('percUtil'+c.id)?.value, c.percUtil||95),
-    socIni: num(document.getElementById('socIni'+c.id)?.value, c.socIni||20),
-    socFim: num(document.getElementById('socFim'+c.id)?.value, c.socFim||100),
-    etaGlobal: num(document.getElementById('etaGlobal'+c.id)?.value, c.etaGlobal||85),
-    onboardKW: num(document.getElementById('onboardKW'+c.id)?.value, c.onboardKW||7.4)
-  }));
+function renderCarros(skipHarvest=false){
+  if(!skipHarvest){
+    // Captura valores atuais antes de recriar HTML (evita perder alterações)
+    carros = carros.map(c=>({
+      ...c,
+      nome: document.getElementById('carroNome'+c.id)?.value || c.nome || '',
+      capNominal: num(document.getElementById('capNominal'+c.id)?.value, c.capNominal||60),
+      percUtil: num(document.getElementById('percUtil'+c.id)?.value, c.percUtil||95),
+      socIni: num(document.getElementById('socIni'+c.id)?.value, c.socIni||20),
+      socFim: num(document.getElementById('socFim'+c.id)?.value, c.socFim||100),
+      etaGlobal: num(document.getElementById('etaGlobal'+c.id)?.value, c.etaGlobal||85),
+      onboardKW: num(document.getElementById('onboardKW'+c.id)?.value, c.onboardKW||7.4)
+    }));
+  }
   const container = document.getElementById('carrosContainer');
   container.innerHTML = carros.map(c=>carroFields(c.id, c)).join('');
   updateSavedCarModels();
 }
-function renderPlacas(){
-  placas = placas.map(p=>({
-    ...p,
-    nome: document.getElementById('placaNome'+p.id)?.value || p.nome || '',
-    kWp: num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0),
-    pr: num(document.getElementById('pr'+p.id)?.value, p.pr||75),
-    psh: num(document.getElementById('psh'+p.id)?.value, p.psh||5),
-    obs: document.getElementById('obs'+p.id)?.value || p.obs || ''
-  }));
+function renderPlacas(skipHarvest=false){
+  if(!skipHarvest){
+    placas = placas.map(p=>({
+      ...p,
+      nome: document.getElementById('placaNome'+p.id)?.value || p.nome || '',
+      kWp: num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0),
+      pr: num(document.getElementById('pr'+p.id)?.value, p.pr||75),
+      psh: num(document.getElementById('psh'+p.id)?.value, p.psh||5),
+      obs: document.getElementById('obs'+p.id)?.value || p.obs || ''
+    }));
+  }
   const container = document.getElementById('placasContainer');
   container.innerHTML = placas.map(p=>placaFields(p.id, p)).join('');
   updateSavedPlacaModels();
@@ -962,8 +966,8 @@ function loadConfig(){
   placas = conf.placas.map((p,i)=>({...p,id:i}));
   nextCarroId = carros.length;
   nextPlacaId = placas.length;
-  renderCarros();
-  renderPlacas();
+  renderCarros(true);
+  renderPlacas(true);
   updateSavedCarModels();
   updateSavedPlacaModels();
   // Meta
@@ -1318,8 +1322,8 @@ function importarJSON(input){
         placas = obj.placas.map((p,i)=>({...p,id:i}));
         nextCarroId = carros.length;
         nextPlacaId = placas.length;
-        renderCarros();
-        renderPlacas();
+  renderCarros(true);
+  renderPlacas(true);
         // Meta
         if(obj.meta){
           const nc = document.getElementById('numChargers');
