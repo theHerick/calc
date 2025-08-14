@@ -469,13 +469,67 @@ function initSaveModal(){
   const modal = document.getElementById('saveModal');
   const closeBtn = document.getElementById('closeSaveModalBtn');
   if(!openBtn || !modal || !closeBtn) return;
-  const open = ()=>{ modal.style.display='flex'; document.body.classList.add('modal-open'); };
+  const open = ()=>{ 
+    modal.style.display='flex'; 
+    document.body.classList.add('modal-open'); 
+    // foco prioritário
+    setTimeout(()=>{
+      const cfg = document.getElementById('configNameInput');
+      if(cfg) cfg.focus();
+      autoFillModelName('car');
+      autoFillModelName('placa');
+    },60);
+  };
   const close = ()=>{ modal.style.display='none'; document.body.classList.remove('modal-open'); };
   openBtn.addEventListener('click', open);
   closeBtn.addEventListener('click', close);
   modal.addEventListener('click', (e)=>{ if(e.target === modal) close(); });
   document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
 }
+
+// Preenche automaticamente campo de nome de modelo se vazio
+function autoFillModelName(tipo){
+  if(tipo==='car'){
+    const input = document.getElementById('carModelNameInput');
+    if(input && !input.value){
+      const sel = document.getElementById('carSelect');
+      if(sel){
+        const id = sel.value;
+        const nomeCar = document.getElementById('carroNome'+id)?.value?.trim();
+        if(nomeCar) input.value = nomeCar;
+      }
+    }
+  }else if(tipo==='placa'){
+    const input = document.getElementById('placaModelNameInput');
+    if(input && !input.value){
+      const sel = document.getElementById('placaSelect');
+      if(sel){
+        const id = sel.value;
+        const nomePlaca = document.getElementById('placaNome'+id)?.value?.trim();
+        if(nomePlaca) input.value = nomePlaca;
+      }
+    }
+  }
+}
+
+// Listeners para mudança de seleção atualizar sugestão de nome
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.id==='carSelect') autoFillModelName('car');
+  if(e.target && e.target.id==='placaSelect') autoFillModelName('placa');
+});
+
+// Enter envia salvamento no campo de nome correspondente
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){
+    if(document.activeElement===document.getElementById('configNameInput')){
+      saveConfig();
+    }else if(document.activeElement===document.getElementById('carModelNameInput')){
+      saveCarModel();
+    }else if(document.activeElement===document.getElementById('placaModelNameInput')){
+      savePlacaModel();
+    }
+  }
+});
 
 // Carros dinâmicos
 function carroFields(id, values={}){
