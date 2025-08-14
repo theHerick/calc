@@ -1,125 +1,457 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Painel Solar para Carro Elétrico</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #00c6ff, #0072ff);
-            margin: 0;
-            padding: 0;
-            color: white;
-        }
-        header {
-            text-align: center;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.3);
-        }
-        main {
-            max-width: 800px;
-            margin: auto;
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        label {
-            display: block;
-            margin-top: 10px;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            border: none;
-            border-radius: 5px;
-        }
-        button {
-            margin-top: 20px;
-            padding: 10px;
-            width: 100%;
-            background-color: #ff9800;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            color: white;
-        }
-        button:hover {
-            background-color: #e68900;
-        }
-        .resultado {
-            margin-top: 20px;
-            font-weight: bold;
-            background-color: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 5px;
-        }
-        footer {
-            text-align: center;
-            font-size: 0.8em;
-            color: #ccc;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            padding: 8px;
-            background-color: rgba(0, 0, 0, 0.4);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calculadora Solar para Carro Elétrico</title>
+<style>
+  :root{
+    --bg: #0b1020;
+    --card: rgba(255,255,255,0.06);
+    --glass: rgba(255,255,255,0.08);
+    --text: #ecf0ff;
+    --muted: #c7cbee;
+    --accent: #7ccfff;
+    --accent-2: #a18cff;
+    --ok: #7dffa7;
+    --warn: #ffd37d;
+    --err: #ff8f8f;
+    --shadow: 0 10px 30px rgba(0,0,0,0.45);
+    --radius: 16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 20% -10%, #2a3baa 0%, transparent 60%),
+      radial-gradient(1000px 700px at 120% 10%, #26a3c8 0%, transparent 55%),
+      radial-gradient(900px 600px at 50% 120%, #8e46ff 0%, transparent 45%),
+      var(--bg);
+    background-attachment: fixed;
+  }
+  header{
+    padding: 28px 20px 8px;
+    text-align:center;
+  }
+  h1{
+    margin:0;
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: .4px;
+  }
+  .subtitle{
+    margin-top:8px;
+    color:var(--muted);
+    font-size: clamp(14px, 2.2vw, 16px);
+  }
+
+  .container{
+    width:min(1100px, 92vw);
+    margin: 28px auto 80px;
+    display:grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 980px){
+    .container{grid-template-columns:1fr}
+  }
+
+  .panel, .results{
+    background: linear-gradient(180deg, var(--glass), transparent 140%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+
+  .section-title{
+    font-size: 16px;
+    letter-spacing: .3px;
+    margin: 8px 4px 12px;
+    color: var(--accent);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width:680px){ .grid{grid-template-columns:1fr} }
+
+  label{
+    font-size: 13px;
+    color: var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    margin-bottom:6px;
+    gap:10px;
+  }
+  .hint{
+    font-size: 12px;
+    color: var(--muted);
+    opacity:.85;
+  }
+  .field{
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 12px;
+    padding: 12px 12px;
+    color: var(--text);
+    width: 100%;
+    outline:none;
+  }
+  .field:focus{
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,207,255,0.15);
+  }
+  .unit{
+    opacity:.8; font-size:12px;
+  }
+
+  .actions{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  button{
+    appearance: none;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor:pointer;
+    color:#0b1020;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    font-weight: 700;
+    letter-spacing: .2px;
+    box-shadow: var(--shadow);
+  }
+  button.secondary{
+    background: transparent;
+    color: var(--text);
+    border:1px solid rgba(255,255,255,0.2);
+  }
+
+  .results{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+  .cards{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width:680px){ .cards{grid-template-columns:1fr} }
+  .card{
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 14px;
+    padding: 16px;
+    min-height: 106px;
+  }
+  .kpi{
+    font-size: clamp(22px, 3.6vw, 30px);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .kpi small{font-weight:600; font-size: 12px; opacity:.85}
+  .kpi-label{
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 13px;
+  }
+  .note{
+    font-size: 12px; color: var(--muted);
+  }
+  .ok{ color: var(--ok); }
+  .warn{ color: var(--warn); }
+  .err{ color: var(--err); }
+
+  details{
+    background: rgba(255,255,255,0.05);
+    border: 1px dashed rgba(255,255,255,0.2);
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+  summary{
+    cursor:pointer;
+    color:var(--muted);
+    font-weight:600;
+    margin: -4px 0 6px;
+  }
+
+  footer{
+    text-align:center;
+    padding: 32px 12px 40px;
+    color: var(--muted);
+    font-weight:600;
+  }
+  .brand{
+    display:inline-block;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.18);
+  }
+</style>
 </head>
 <body>
+  <header>
+    <h1>Calculadora Solar &nbsp;→&nbsp; Carro Elétrico</h1>
+    <div class="subtitle">Descubra quanta energia seu sistema fotovoltaico precisa gerar e o tempo para carregar seu EV.</div>
+  </header>
 
-    <header>
-        <h1>Calculadora de Painel Solar para Carro Elétrico</h1>
-        <p>IoTEC Lab - UNIVALI</p>
-    </header>
+  <div class="container">
+    <!-- Entrada -->
+    <div class="panel">
+      <div class="section-title">⚡ Especificações do Carro</div>
+      <div class="grid">
+        <div>
+          <label>Capacidade da bateria <span class="unit">kWh</span></label>
+          <input class="field" id="capNominal" type="number" min="1" step="0.1" value="60">
+          <div class="hint">Se não souber a utilizável, use a nominal e ajuste o % utilizável.</div>
+        </div>
+        <div>
+          <label>Capacidade utilizável <span class="unit">%</span></label>
+          <input class="field" id="percUtil" type="number" min="50" max="100" step="1" value="95">
+          <div class="hint">Percentual da bateria efetivamente usado (ex.: 95%).</div>
+        </div>
+        <div>
+          <label>SOC inicial <span class="unit">%</span></label>
+          <input class="field" id="socIni" type="number" min="0" max="100" step="1" value="20">
+        </div>
+        <div>
+          <label>SOC final <span class="unit">%</span></label>
+          <input class="field" id="socFim" type="number" min="1" max="100" step="1" value="100">
+        </div>
+        <div>
+          <label>Eficiência global FV→bateria <span class="unit">%</span></label>
+          <input class="field" id="etaGlobal" type="number" min="60" max="99" step="1" value="85">
+          <div class="hint">Perdas de inversor, cabos, EVSE e carregador onboard.</div>
+        </div>
+        <div>
+          <label>Potência máx. do carregador onboard <span class="unit">kW</span></label>
+          <input class="field" id="onboardKW" type="number" min="0" step="0.1" value="7.4">
+          <div class="hint">Usado para estimar limite teórico de taxa de carga.</div>
+        </div>
+      </div>
 
-    <main>
-        <label for="capacidadeBateria">Capacidade da bateria do carro (kWh):</label>
-        <input type="number" id="capacidadeBateria" placeholder="Ex: 75">
+      <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
+      <div class="grid">
+        <div>
+          <label>Potência do array <span class="unit">kWp</span></label>
+          <input class="field" id="kWp" type="number" min="0.1" step="0.1" value="2.0">
+        </div>
+        <div>
+          <label>Performance Ratio (PR) <span class="unit">%</span></label>
+          <input class="field" id="pr" type="number" min="50" max="95" step="1" value="75">
+          <div class="hint">Perdas por temperatura, sujeira, sombreamento, etc.</div>
+        </div>
+        <div>
+          <label>Horas de Sol Pleno (PSH) <span class="unit">h/dia</span></label>
+          <input class="field" id="psh" type="number" min="1" step="0.1" value="5">
+          <div class="hint">Média da sua cidade (ex.: 4–6 h/dia).</div>
+        </div>
+        <div>
+          <label>Observação</label>
+          <input class="field" id="obs" type="text" placeholder="Orientação, inclinação, sombreamento... (opcional)">
+        </div>
+      </div>
 
-        <label for="potenciaPainel">Potência do painel solar (W):</label>
-        <input type="number" id="potenciaPainel" placeholder="Ex: 400">
+      <div class="actions">
+        <button id="calcBtn">Calcular</button>
+        <button class="secondary" id="resetBtn">Limpar</button>
+      </div>
 
-        <label for="horasSol">Horas de sol pleno por dia:</label>
-        <input type="number" id="horasSol" placeholder="Ex: 5">
+      <details style="margin-top:12px">
+        <summary>Como calculamos?</summary>
+        <div class="hint">
+          <p><b>Energia na bateria</b>: E_bat = Cap_utilizável_kWh × (SOC_final − SOC_inicial)</p>
+          <p><b>Energia FV necessária</b>: E_PV = E_bat / η_global</p>
+          <p><b>Geração diária</b>: E_dia = kWp × PSH × PR</p>
+          <p><b>Dias necessários</b>: Dias = E_PV / E_dia</p>
+          <p><b>Horas de sol pleno</b>: Horas = E_PV / (kWp × PR)</p>
+          <p><b>Limite teórico por potência</b>: t_mín ≈ E_bat / min(onboard_kW, kWp × PR)</p>
+        </div>
+      </details>
+    </div>
 
-        <label for="eficiencia">Eficiência do sistema (%)</label>
-        <input type="number" id="eficiencia" placeholder="Ex: 85">
+    <!-- Resultados -->
+    <div class="results">
+      <div class="section-title">📊 Resultados</div>
 
-        <button onclick="calcular()">Calcular</button>
+      <div class="cards">
+        <div class="card">
+          <div class="kpi" id="kpiEbat">—</div>
+          <div class="kpi-label">Energia para a bateria</div>
+          <div class="note">Entre SOC inicial e final.</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiEpv">—</div>
+          <div class="kpi-label">Energia FV necessária (rede → bateria)</div>
+          <div class="note">Considerando a eficiência global.</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiEdia">—</div>
+          <div class="kpi-label">Geração diária estimada</div>
+          <div class="note">kWp × PSH × PR.</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiDias">—</div>
+          <div class="kpi-label">Dias necessários</div>
+          <div class="note">Média — varia com clima/estação.</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiHoras">—</div>
+          <div class="kpi-label">Horas de sol pleno equivalentes</div>
+          <div class="note">Total acumulado necessário.</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiTmin">—</div>
+          <div class="kpi-label">Tempo mínimo teórico</div>
+          <div class="note">Limitado por potência (irrealista/idealizado).</div>
+        </div>
+      </div>
 
-        <div class="resultado" id="resultado"></div>
-    </main>
+      <div id="alerts" style="margin-top:8px; display:none;">
+        <div class="note" id="alertText"></div>
+      </div>
 
-    <footer>
-        Desenvolvido por Tiburski, Herick Betin • 2025
-    </footer>
+      <details style="margin-top:4px">
+        <summary>Notas & Limitações</summary>
+        <div class="hint">
+          <ul>
+            <li>Valores de PR e PSH são médias; clima e estação alteram bastante.</li>
+            <li>Perto de 80–100% de SOC, o BMS reduz a potência de carga.</li>
+            <li>O tempo mínimo teórico assume potência constante e condições ideais.</li>
+            <li>Se o sistema for off-grid/DC direto, ajuste a eficiência global conforme o caso.</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+  </div>
 
-    <script>
-        function calcular() {
-            const capacidadeBateria = parseFloat(document.getElementById('capacidadeBateria').value);
-            const potenciaPainel = parseFloat(document.getElementById('potenciaPainel').value);
-            const horasSol = parseFloat(document.getElementById('horasSol').value);
-            const eficiencia = parseFloat(document.getElementById('eficiencia').value) / 100;
+  <footer>
+    <span class="brand">IoTEC Lab - UNIVALI</span>
+  </footer>
 
-            if (isNaN(capacidadeBateria) || isNaN(potenciaPainel) || isNaN(horasSol) || isNaN(eficiencia)) {
-                document.getElementById('resultado').innerHTML = "Preencha todos os campos corretamente.";
-                return;
-            }
+<script>
+function num(v, def=0){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+}
+function clamp(n, a, b){
+  return Math.min(Math.max(n, a), b);
+}
+function fmtKWh(x){
+  if (!Number.isFinite(x)) return '—';
+  return x >= 100 ? x.toFixed(0) + ' kWh' : x.toFixed(2) + ' kWh';
+}
+function fmtKW(x){
+  if (!Number.isFinite(x)) return '—';
+  return x.toFixed(2) + ' kW';
+}
+function fmtH(x){
+  if (!Number.isFinite(x)) return '—';
+  return x.toFixed(1) + ' h';
+}
+function fmtDias(x){
+  if (!Number.isFinite(x)) return '—';
+  if (x < 1) return (x*24).toFixed(1) + ' h';
+  return x.toFixed(2) + ' dias';
+}
 
-            const energiaPorDia_kWh = (potenciaPainel * horasSol * eficiencia) / 1000;
-            const diasNecessarios = capacidadeBateria / energiaPorDia_kWh;
+function calcular(){
+  // Entradas
+  const capNominal = num(document.getElementById('capNominal').value, 60);
+  const percUtil   = clamp(num(document.getElementById('percUtil').value, 95), 0, 100) / 100.0;
+  const socIni     = clamp(num(document.getElementById('socIni').value, 20), 0, 100) / 100.0;
+  const socFim     = clamp(num(document.getElementById('socFim').value, 100), 0, 100) / 100.0;
+  const etaGlobal  = clamp(num(document.getElementById('etaGlobal').value, 85), 1, 100) / 100.0;
+  const onboardKW  = Math.max(0, num(document.getElementById('onboardKW').value, 7.4));
 
-            document.getElementById('resultado').innerHTML = `
-                🔋 Energia gerada por dia: ${energiaPorDia_kWh.toFixed(2)} kWh<br>
-                ⏳ Dias necessários para carga completa: ${diasNecessarios.toFixed(1)} dias
-            `;
-        }
-    </script>
+  const kWp        = Math.max(0, num(document.getElementById('kWp').value, 2.0));
+  const pr         = clamp(num(document.getElementById('pr').value, 75), 1, 100) / 100.0;
+  const psh        = Math.max(0, num(document.getElementById('psh').value, 5));
 
+  // Validações básicas
+  let alerts = [];
+  if (socFim <= socIni) alerts.push("O SOC final deve ser maior que o SOC inicial.");
+  if (kWp <= 0) alerts.push("Defina a potência do array (kWp) > 0.");
+  if (psh <= 0) alerts.push("Defina as horas de sol pleno (PSH) > 0.");
+
+  // Cálculos
+  const capUtil_kWh = capNominal * percUtil;
+  const deltaSOC    = Math.max(0, socFim - socIni);
+  const E_bat       = capUtil_kWh * deltaSOC; // kWh que entram na bateria
+  const E_pv        = E_bat > 0 ? E_bat / etaGlobal : 0; // kWh que o FV precisa gerar (até a bateria)
+  const E_dia       = kWp * psh * pr; // kWh/dia
+  const dias        = (E_dia > 0) ? (E_pv / E_dia) : Infinity;
+  const horasSol    = (kWp*pr > 0) ? (E_pv / (kWp * pr)) : Infinity;
+
+  // Potência de pico útil do FV (aprox) e limite teórico de tempo por potência
+  const P_pico_FV   = kWp * pr;                // kW (já com PR)
+  const P_lim       = Math.max(0, Math.min(onboardKW || Infinity, P_pico_FV || Infinity));
+  const t_min       = (P_lim > 0) ? (E_bat / P_lim) : Infinity; // horas (idealizado, sem perdas dinâmicas)
+
+  if (etaGlobal < 0.75) alerts.push("Eficiência global baixa — verifique perdas (cabos, inversor, EVSE).");
+  if (P_pico_FV < 1.0) alerts.push("Potência de pico FV baixa; carregamento será bem lento.");
+  if (!Number.isFinite(dias) || !Number.isFinite(horasSol)) alerts.push("Verifique os campos: há valores inválidos.");
+
+  // Exibir KPIs
+  document.getElementById('kpiEbat').innerHTML  = `<span class="ok">${fmtKWh(E_bat)}</span>`;
+  document.getElementById('kpiEpv').innerHTML   = fmtKWh(E_pv);
+  document.getElementById('kpiEdia').innerHTML  = fmtKWh(E_dia) + ` <small>(por dia)</small>`;
+  document.getElementById('kpiDias').innerHTML  = fmtDias(dias);
+  document.getElementById('kpiHoras').innerHTML = fmtH(horasSol);
+  document.getElementById('kpiTmin').innerHTML  = Number.isFinite(t_min) ? fmtH(t_min) : '—';
+
+  const alertBox = document.getElementById('alerts');
+  const alertText = document.getElementById('alertText');
+  if (alerts.length){
+    alertBox.style.display = 'block';
+    alertText.innerHTML = '⚠️ ' + alerts.join('<br>');
+  }else{
+    alertBox.style.display = 'none';
+    alertText.innerHTML = '';
+  }
+}
+
+function limpar(){
+  document.getElementById('capNominal').value = 60;
+  document.getElementById('percUtil').value = 95;
+  document.getElementById('socIni').value = 20;
+  document.getElementById('socFim').value = 100;
+  document.getElementById('etaGlobal').value = 85;
+  document.getElementById('onboardKW').value = 7.4;
+
+  document.getElementById('kWp').value = 2.0;
+  document.getElementById('pr').value = 75;
+  document.getElementById('psh').value = 5;
+  document.getElementById('obs').value = '';
+
+  // limpa resultados
+  ['kpiEbat','kpiEpv','kpiEdia','kpiDias','kpiHoras','kpiTmin'].forEach(id=>{
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('alerts').style.display = 'none';
+  document.getElementById('alertText').textContent = '';
+}
+
+document.getElementById('calcBtn').addEventListener('click', calcular);
+document.getElementById('resetBtn').addEventListener('click', limpar);
+
+// cálculo inicial
+calcular();
+</script>
 </body>
 </html>
