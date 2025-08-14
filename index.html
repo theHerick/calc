@@ -245,6 +245,12 @@
   .note{
     font-size: 12px; color: var(--muted);
   }
+  .info-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;font-size:11px;font-weight:700;border-radius:50%;background:rgba(255,255,255,0.12);color:var(--accent);margin-left:6px;cursor:pointer;position:relative;}
+  .info-icon:hover{background:rgba(124,207,255,0.25);}
+  .help-pop{position:fixed;max-width:280px;background:#111726;border:1px solid rgba(124,207,255,0.4);padding:10px 12px;border-radius:12px;box-shadow:0 10px 32px -6px rgba(0,0,0,0.55);font-size:11.5px;line-height:1.35;z-index:1000000;animation:fadeIn .15s ease;}
+  .help-pop h5{margin:0 0 4px;font-size:12px;color:var(--accent);letter-spacing:.4px;}
+  .help-pop .close-h{position:absolute;top:4px;right:6px;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
   .ok{ color: var(--ok); }
   .warn{ color: var(--warn); }
   .err{ color: var(--err); }
@@ -337,32 +343,32 @@
       <div class="cards">
         <div class="card">
           <div class="kpi" id="kpiEbat">—</div>
-          <div class="kpi-label">Energia para a bateria</div>
+          <div class="kpi-label">Energia para a bateria <span class="info-icon" onclick="showHelp(event,'E_bat','Energia efetiva que entra na bateria para elevar o SOC: Capacidade_nominal × %Utilizável × (SOC_final - SOC_inicial). Não inclui perdas da cadeia FV→bateria.')">i</span></div>
           <div class="note">Entre SOC inicial e final.</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiEpv">—</div>
-          <div class="kpi-label">Energia FV necessária (rede → bateria)</div>
+          <div class="kpi-label">Energia FV necessária <span class="info-icon" onclick="showHelp(event,'E_PV','Energia que precisa ser produzida antes das perdas (ou retirada da rede) para entregar a energia útil na bateria: E_PV = E_bat / η_global.')">i</span></div>
           <div class="note">Considerando a eficiência global.</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiEdia">—</div>
-          <div class="kpi-label">Geração diária estimada</div>
+          <div class="kpi-label">Geração diária estimada <span class="info-icon" onclick="showHelp(event,'E_dia','Energia média produzida por dia: kWp_total × PR_ponderado × PSH_ponderado (médias).')">i</span></div>
           <div class="note">kWp × PSH × PR.</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiDias">—</div>
-          <div class="kpi-label">Dias para gerar energia</div>
+          <div class="kpi-label">Dias para gerar energia <span class="info-icon" onclick="showHelp(event,'Dias','Tempo em dias médios de geração FV para acumular E_PV_total: Dias = E_PV_total / E_dia.')">i</span></div>
           <div class="note">Média — varia com clima/estação.</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiHoras">—</div>
-          <div class="kpi-label">Horas de sol pleno equivalentes</div>
+          <div class="kpi-label">Horas de sol pleno equivalentes <span class="info-icon" onclick="showHelp(event,'Horas FV eq.','Soma de horas equivalentes a potência de pico (PR aplicado) para gerar E_PV_total: Horas = E_PV_total / (kWp_total × PR).')">i</span></div>
           <div class="note">Total acumulado necessário.</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiTmin">—</div>
-          <div class="kpi-label">Tempo mínimo teórico</div>
+          <div class="kpi-label">Tempo mínimo teórico <span class="info-icon" onclick="showHelp(event,'t_min','Limite ideal assumindo potência constante e sem taper: t_min = E_bat_total / min(ΣP_onboard, kWp_total × PR).')">i</span></div>
           <div class="note">Limitado por potência (irrealista/idealizado).</div>
         </div>
       </div>
@@ -370,16 +376,16 @@
         <div class="note" id="alertText"></div>
       </div>
       <div class="breakdown-wrapper" id="perCarWrapper" style="display:none;">
-        <h4>🔍 Detalhamento por Carro <span class="tag">estimativas</span></h4>
+  <h4>🔍 Detalhamento por Carro <span class="tag">estimativas</span> <span class="info-icon" onclick="showHelp(event,'Detalhamento','Tabela que decompõe por veículo: energia útil (E_bat), energia FV bruta exigida (E_PV), horas equivalentes de sol e tempo mínimo limitado por potência. Útil para identificar gargalos individuais.')">i</span></h4>
         <div style="overflow-x:auto;">
           <table class="breakdown-table" id="perCarTable">
             <thead>
               <tr>
-                <th>Carro</th>
-                <th>E_bat (kWh)</th>
-                <th>E_PV (kWh)</th>
-                <th>Horas FV eq.</th>
-                <th>t_lim carga (h)</th>
+    <th>Carro</th>
+    <th>E_bat (kWh) <span class="info-icon" onclick="showHelp(event,'E_bat','Energia que entra na bateria (após perdas).')">i</span></th>
+    <th>E_PV (kWh) <span class="info-icon" onclick="showHelp(event,'E_PV','Energia gerada/fornecida antes das perdas para este carro.')">i</span></th>
+    <th>Horas FV eq. <span class="info-icon" onclick="showHelp(event,'Horas FV eq.','Horas de pico necessárias para gerar E_PV do carro: E_PV_car / (kWp_total × PR).')">i</span></th>
+    <th>t_lim (h) <span class="info-icon" onclick="showHelp(event,'t_lim','Tempo mínimo limitado por min(P_onboard_car, potência FV efetiva).')">i</span></th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -1298,6 +1304,31 @@ function limpar(){
   document.getElementById('alerts').style.display = 'none';
   document.getElementById('alertText').textContent = '';
 }
+
+// Tooltip / Help system
+let currentHelpEl = null;
+function showHelp(evt, titulo, texto){
+  evt.stopPropagation();
+  // Fechar antigo
+  if(currentHelpEl){ currentHelpEl.remove(); currentHelpEl=null; }
+  const div = document.createElement('div');
+  div.className='help-pop';
+  div.innerHTML = `<button class="close-h" onclick="this.parentNode.remove();event.stopPropagation();">×</button><h5>${titulo}</h5>${texto}`;
+  document.body.appendChild(div);
+  const rect = evt.currentTarget.getBoundingClientRect();
+  const vw = window.innerWidth; const vh = window.innerHeight;
+  let top = rect.bottom + 8; let left = rect.left;
+  if(left + 300 > vw) left = vw - 300 - 12;
+  if(top + div.offsetHeight > vh) top = rect.top - div.offsetHeight - 8;
+  div.style.top = top + 'px';
+  div.style.left = left + 'px';
+  currentHelpEl = div;
+}
+document.addEventListener('click', (e)=>{
+  if(currentHelpEl && !currentHelpEl.contains(e.target) && !e.target.classList.contains('info-icon')){
+    currentHelpEl.remove(); currentHelpEl=null;
+  }
+});
 
 // Exportar / Importar JSON
 function exportarJSON(){
