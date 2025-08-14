@@ -425,6 +425,7 @@
   .modal-content{display:flex;flex-direction:column;gap:26px;}
   .modal-block{background:rgba(255,255,255,0.04);padding:14px 16px 18px;border:1px solid rgba(255,255,255,0.12);border-radius:16px;position:relative;}
   .modal-block:before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:linear-gradient(140deg,rgba(124,207,255,0.35),rgba(161,140,255,0.25) 35%,rgba(255,255,255,0.05) 70%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;}
+  .modal-block:before{pointer-events:none;}
   .modal-block-title{font-weight:600;color:var(--accent);display:block;}
   .modal-block-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;}
   .mini-hint{margin:4px 0 10px;font-size:11px;letter-spacing:.3px;color:var(--muted);opacity:.85;}
