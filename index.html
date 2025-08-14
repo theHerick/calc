@@ -275,26 +275,36 @@
         <button class="secondary" id="resetBtn">Limpar</button>
         <button id="saveConfigBtn" type="button">Salvar Configuração</button>
       </div>
-      <div style="margin-top:10px">
-        <label for="savedConfigs">Configurações Salvas:</label>
-        <select id="savedConfigs"></select>
-        <button id="loadConfigBtn" type="button">Carregar</button>
-        <button id="deleteConfigBtn" type="button">Excluir</button>
+    </div>
+    <!-- Card horizontal para salvar/carregar modelos/configurações -->
+    <div class="card-dyn" style="margin-top:18px; display:flex; flex-direction:row; gap:24px; align-items:flex-start; justify-content:center;">
+      <div style="flex:1; min-width:180px;">
+        <label for="savedConfigs" style="margin-bottom:4px;">Configurações Salvas:</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="savedConfigs"></select>
+          <button id="loadConfigBtn" type="button">Carregar</button>
+          <button id="deleteConfigBtn" type="button">Excluir</button>
+        </div>
       </div>
-      <div style="margin-top:10px">
-        <label for="savedCarModels">Modelos de Carro Salvos:</label>
-        <select id="savedCarModels"></select>
-        <button id="saveCarModelBtn" type="button">Salvar Modelo</button>
-        <button id="loadCarModelBtn" type="button">Aplicar em Carro Selecionado</button>
-        <select id="carSelect"></select>
+      <div style="flex:1; min-width:180px;">
+        <label for="savedCarModels" style="margin-bottom:4px;">Modelos de Carro:</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="savedCarModels"></select>
+          <button id="saveCarModelBtn" type="button">Salvar</button>
+          <button id="loadCarModelBtn" type="button">Aplicar</button>
+          <select id="carSelect"></select>
+        </div>
       </div>
-      <div style="margin-top:10px">
-        <label for="savedPlacaModels">Modelos de Placa Salvos:</label>
-        <select id="savedPlacaModels"></select>
-        <button id="savePlacaModelBtn" type="button">Salvar Modelo</button>
-        <button id="loadPlacaModelBtn" type="button">Aplicar em Placa Selecionada</button>
-        <select id="placaSelect"></select>
+      <div style="flex:1; min-width:180px;">
+        <label for="savedPlacaModels" style="margin-bottom:4px;">Modelos de Placa:</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <select id="savedPlacaModels"></select>
+          <button id="savePlacaModelBtn" type="button">Salvar</button>
+          <button id="loadPlacaModelBtn" type="button">Aplicar</button>
+          <select id="placaSelect"></select>
+        </div>
       </div>
+    </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
         <div class="hint">
