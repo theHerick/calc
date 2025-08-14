@@ -479,10 +479,55 @@ function carroFields(id, values={}){
     <div class="grid">
       <div><label>Nome do carro</label><input class="field" id="carroNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: EV1"></div>
       <div><label>Capacidade da bateria <span class="unit">kWh</span></label><input class="field" id="capNominal${id}" type="number" min="1" step="0.1" value="${values.capNominal||60}"></div>
-      <div><label>Capacidade utilizável <span class="unit">%</span></label><input class="field" id="percUtil${id}" type="number" min="50" max="100" step="1" value="${values.percUtil||95}"></div>
+      <div>
+        <label>Capacidade utilizável <span class="unit">%</span>
+          <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="toggleUtilHelper(${id})" title="Calcular a % a partir de kWh">&#x3f;</span>
+        </label>
+        <input class="field" id="percUtil${id}" type="number" min="50" max="100" step="1" value="${values.percUtil||95}">
+        <div id="utilHelper${id}" style="display:none;margin-top:8px;background:rgba(124,207,255,0.08);padding:10px 12px;border-radius:10px;">
+          <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
+            <b>% Utilizável = Cap_utilizável / Cap_nominal × 100</b><br>
+            Insira valores em kWh. Usaremos Capacidade da bateria acima se deixar em branco.
+          </div>
+          <label style="font-size:12px;">Capacidade nominal (kWh)</label>
+          <input class="field" id="capNominalCalc${id}" type="number" min="0" step="0.01" style="margin-bottom:6px;" placeholder="auto se vazio">
+          <label style="font-size:12px;">Capacidade utilizável (kWh)</label>
+            <input class="field" id="capUtilCalc${id}" type="number" min="0" step="0.01" style="margin-bottom:6px;" placeholder="Ex: 75">
+          <button type="button" class="secondary" onclick="calcularPercUtil(${id})">Calcular %</button>
+          <div id="percUtilResult${id}" style="margin-top:6px;font-size:13px;color:var(--accent);"></div>
+        </div>
+      </div>
       <div><label>SOC inicial <span class="unit">%</span></label><input class="field" id="socIni${id}" type="number" min="0" max="100" step="1" value="${values.socIni||20}"></div>
       <div><label>SOC final <span class="unit">%</span></label><input class="field" id="socFim${id}" type="number" min="1" max="100" step="1" value="${values.socFim||100}"></div>
-      <div><label>Eficiência global FV→bateria <span class="unit">%</span></label><input class="field" id="etaGlobal${id}" type="number" min="60" max="99" step="1" value="${values.etaGlobal||85}"></div>
+      <div>
+        <label>Eficiência global FV→bateria <span class="unit">%</span>
+          <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="toggleEtaHelper(${id})" title="Calcular / entender eficiência">&#x3f;</span>
+        </label>
+        <input class="field" id="etaGlobal${id}" type="number" min="60" max="99" step="1" value="${values.etaGlobal||85}">
+        <div id="etaHelper${id}" style="display:none;margin-top:8px;background:rgba(124,207,255,0.08);padding:10px 12px;border-radius:10px;">
+          <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
+            <b>Eficiência (%) = E_armazenada / E_saida_inversor × 100</b><br>
+            Onde E_armazenada é a energia efetiva que entrou na bateria (ΔSOC × Cap_utilizável) e E_saida_inversor é a energia AC (ou DC antes do conversor) entregue ao carregador.<br>
+            Use medições reais ou estime. Para simulação sem dados: <b>80–88%</b> (sistemas AC residenciais), <b>88–92%</b> (otimizado / menos conversões). Abaixo de 75% investigue perdas.
+          </div>
+          <label style="font-size:12px;">Energia armazenada (kWh) E_armazenada</label>
+          <input class="field" id="Earma${id}" type="number" min="0" step="0.01" style="margin-bottom:6px;" placeholder="Ex: 30">
+          <label style="font-size:12px;">Energia saída inversor (kWh) E_saida</label>
+          <input class="field" id="Esaida${id}" type="number" min="0" step="0.01" style="margin-bottom:6px;" placeholder="Ex: 36">
+          <button type="button" class="secondary" onclick="calcularEta(${id})">Calcular η</button>
+          <div id="etaResult${id}" style="margin-top:6px;font-size:13px;color:var(--accent);"></div>
+          <details style="margin-top:6px;">
+            <summary style="font-size:11px;">Faixas / Notas</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.35;">
+              <b>≥ 90%</b>: excelente (mínimas perdas).<br>
+              <b>80–89%</b>: típico / bom.<br>
+              <b>75–79%</b>: aceitável, revisar ajustes (cabos, temperaturas).<br>
+              <b><75%</b>: investigar: conversões múltiplas, aquecimento, cabos subdimensionados, BMS limitando.<br>
+              Valor estimado não substitui medição real.
+            </div>
+          </details>
+        </div>
+      </div>
       <div><label>Potência máx. do carregador onboard <span class="unit">kW</span></label><input class="field" id="onboardKW${id}" type="number" min="0" step="0.1" value="${values.onboardKW||7.4}"></div>
     </div>
   </div>`;
@@ -571,6 +616,48 @@ function calcularPR(id){
     document.getElementById('prResult'+id).innerHTML = `PR calculado: <b class="${classe}">${PR.toFixed(1)}%</b>`;
   } else {
     document.getElementById('prResult'+id).textContent = '';
+  }
+}
+
+// Helper Eficiência (η)
+function toggleEtaHelper(id){
+  const el = document.getElementById('etaHelper'+id);
+  if(el) el.style.display = (el.style.display==='none'||!el.style.display)?'block':'none';
+}
+
+function calcularEta(id){
+  const Earma = num(document.getElementById('Earma'+id)?.value, 0);
+  const Esaida = num(document.getElementById('Esaida'+id)?.value, 0);
+  if(Earma>0 && Esaida>0){
+    const eta = (Earma / Esaida) * 100;
+    document.getElementById('etaGlobal'+id).value = Math.min(99, Math.max(1, eta)).toFixed(0);
+    let classe='ok';
+    if(eta < 75) classe='err'; else if(eta < 80) classe='warn';
+    document.getElementById('etaResult'+id).innerHTML = `Eficiência calculada: <b class="${classe}">${eta.toFixed(1)}%</b>`;
+  } else {
+    document.getElementById('etaResult'+id).textContent='';
+  }
+}
+
+// Helper % Capacidade Utilizável
+function toggleUtilHelper(id){
+  const el = document.getElementById('utilHelper'+id);
+  if(el) el.style.display = (el.style.display==='none'||!el.style.display)?'block':'none';
+}
+function calcularPercUtil(id){
+  let capNom = num(document.getElementById('capNominalCalc'+id)?.value, 0);
+  const capNomField = num(document.getElementById('capNominal'+id)?.value, 0);
+  if(capNom<=0) capNom = capNomField; // fallback
+  const capUtil = num(document.getElementById('capUtilCalc'+id)?.value, 0);
+  if(capNom>0 && capUtil>0){
+    const perc = (capUtil / capNom) * 100;
+    document.getElementById('percUtil'+id).value = Math.min(100, Math.max(0, perc)).toFixed(0);
+    let classe='ok';
+    if(perc < 85) classe='warn';
+    if(perc < 75) classe='err';
+    document.getElementById('percUtilResult'+id).innerHTML = `Utilizável: <b class="${classe}">${perc.toFixed(2)}%</b>`;
+  } else {
+    document.getElementById('percUtilResult'+id).textContent='';
   }
 }
 
