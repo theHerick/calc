@@ -281,6 +281,18 @@
     background: rgba(255,255,255,0.06);
     border:1px solid rgba(255,255,255,0.18);
   }
+  /* Toasts e impressão */
+  .toast-container{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:10px;z-index:200000;}
+  .toast{background:linear-gradient(135deg,var(--glass),rgba(255,255,255,0.05));border:1px solid rgba(255,255,255,0.2);padding:10px 14px;border-radius:12px;font-size:12.5px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 20px -4px rgba(0,0,0,0.6);animation:fadeIn .25s ease;display:flex;align-items:center;gap:8px;min-width:220px;max-width:320px;}
+  .toast.ok{border-color:rgba(125,255,167,0.45);} .toast.warn{border-color:rgba(255,211,125,0.45);} .toast.err{border-color:rgba(255,143,143,0.55);}
+  .toast button{background:transparent;color:var(--muted);border:none;font-size:14px;margin-left:auto;cursor:pointer;padding:2px 6px;border-radius:8px;}
+  .toast button:hover{background:rgba(255,255,255,0.08);} 
+  @media print{
+    body{background:#fff;color:#000;font:12px Arial,sans-serif;}
+    header,.panel .actions button:not(#printBtn), #openSaveModalBtn, .modal-overlay, footer, .info-icon, details, #importFile{display:none!important;}
+    .panel,.results,.card,.breakdown-wrapper{background:#fff;backdrop-filter:none;box-shadow:none;}
+    .card,.breakdown-wrapper{border:1px solid #555!important;}
+  }
 </style>
 </head>
 <body>
@@ -307,6 +319,19 @@
       <label style="font-size:12px;">Fator médio taper (≥80% SOC)<span class="unit"> (0-1)</span></label>
       <input class="field" id="taperFactorInput" type="number" min="0.1" max="1" step="0.05" value="0.55">
       <div class="hint" style="font-size:10px;margin-top:4px;">Potência média relativa na faixa 80–100% (1 = sem redução). Default 0.55.</div>
+    </div>
+    <div style="flex:1;min-width:160px;display:flex;flex-direction:column;">
+      <label style="font-size:12px;">Tarifa energia <span class="unit">R$/kWh</span></label>
+      <input class="field" id="tarifaInput" type="number" min="0" step="0.01" value="0.95">
+      <div class="hint" style="font-size:10px;margin-top:4px;">Para custo diário de déficit.</div>
+    </div>
+    <div style="flex:1;min-width:170px;display:flex;flex-direction:column;">
+      <label style="font-size:12px;">Modo cálculo</label>
+      <select id="autoCalcMode" class="field" style="padding:11px 12px;">
+        <option value="manual" selected>Manual</option>
+        <option value="auto">Auto</option>
+      </select>
+      <div class="hint" style="font-size:10px;margin-top:4px;">Auto recalcula ao digitar.</div>
     </div>
   </div>
   <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
@@ -371,6 +396,11 @@
           <div class="kpi-label">Tempo mínimo teórico <span class="info-icon" onclick="showHelp(event,'t_min','Limite ideal assumindo potência constante e sem taper: t_min = E_bat_total / min(ΣP_onboard, kWp_total × PR).')">i</span></div>
           <div class="note">Limitado por potência (irrealista/idealizado).</div>
         </div>
+        <div class="card" id="cardDeficit">
+          <div class="kpi" id="kpiDeficit">—</div>
+          <div class="kpi-label">Saldo diário FV <span class="info-icon" onclick="showHelp(event,'Saldo diário','Compara E_dia com E_PV_total: positivo = excedente; negativo = déficit (rede).')">i</span></div>
+          <div class="note" id="deficitNote">—</div>
+        </div>
       </div>
       <div id="alerts" style="margin-top:8px; display:none;">
         <div class="note" id="alertText"></div>
@@ -381,11 +411,12 @@
           <table class="breakdown-table" id="perCarTable">
             <thead>
               <tr>
-    <th>Carro</th>
-    <th>E_bat (kWh) <span class="info-icon" onclick="showHelp(event,'E_bat','Energia que entra na bateria (após perdas).')">i</span></th>
-    <th>E_PV (kWh) <span class="info-icon" onclick="showHelp(event,'E_PV','Energia gerada/fornecida antes das perdas para este carro.')">i</span></th>
-    <th>Horas FV eq. <span class="info-icon" onclick="showHelp(event,'Horas FV eq.','Horas de pico necessárias para gerar E_PV do carro: E_PV_car / (kWp_total × PR).')">i</span></th>
-    <th>t_lim (h) <span class="info-icon" onclick="showHelp(event,'t_lim','Tempo mínimo limitado por min(P_onboard_car, potência FV efetiva).')">i</span></th>
+  <th class="sortable" data-sort="nome">Carro</th>
+  <th class="sortable" data-sort="E_bat">E_bat (kWh) <span class="info-icon" onclick="showHelp(event,'E_bat','Energia que entra na bateria (após perdas).')">i</span></th>
+  <th class="sortable" data-sort="E_pv">E_PV (kWh) <span class="info-icon" onclick="showHelp(event,'E_PV','Energia gerada/fornecida antes das perdas para este carro.')">i</span></th>
+  <th class="sortable" data-sort="participacao">% Part. <span class="info-icon" onclick="showHelp(event,'Participação','Percentual da energia FV bruta (E_PV) deste carro sobre o total necessário.')">i</span></th>
+  <th class="sortable" data-sort="horasFV">Horas FV eq. <span class="info-icon" onclick="showHelp(event,'Horas FV eq.','Horas de pico necessárias para gerar E_PV do carro: E_PV_car / (kWp_total × PR).')">i</span></th>
+  <th class="sortable" data-sort="t_lim">t_lim (h) <span class="info-icon" onclick="showHelp(event,'t_lim','Tempo mínimo limitado por min(P_onboard_car, potência FV efetiva).')">i</span></th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -420,6 +451,7 @@
   <footer>
         Desenvolvido por Tiburski, Herick Betin • 2025
   </footer>
+  <div id="toastContainer" class="toast-container"></div>
   
   <!-- Modal global (fora do panel para evitar stacking context) -->
   <div id="saveModal" class="modal-overlay" style="display:none;">
@@ -539,6 +571,12 @@ function fmtDias(x){
   return x.toFixed(2) + ' dias';
 }
 
+function fmtPct(x){ return Number.isFinite(x)? x.toFixed(1)+'%':'—'; }
+function showToast(msg,type='ok',ms=3500){
+  const c=document.getElementById('toastContainer'); if(!c) return;
+  const el=document.createElement('div'); el.className='toast '+type; el.innerHTML=`<span>${msg}</span><button onclick="this.parentNode.remove()" title="Fechar">×</button>`; c.appendChild(el); setTimeout(()=>{ if(el.parentNode) el.remove(); },ms);
+}
+
 // Lógica do modal (abrir/fechar) integrada corretamente
 function initSaveModal(){
   const openBtn = document.getElementById('openSaveModalBtn');
@@ -587,6 +625,36 @@ function autoFillModelName(tipo){
     }
   }
 }
+
+// Ordenação da tabela per-car
+let _perCarSort = {key:null, dir:1};
+function renderPerCarTable(){
+  const tbody = document.querySelector('#perCarTable tbody');
+  if(!tbody || !window._perCarData) return;
+  let data = [...window._perCarData];
+  if(_perCarSort.key){
+    data.sort((a,b)=>{
+      const A=a[_perCarSort.key]; const B=b[_perCarSort.key];
+      if(typeof A==='string') return A.localeCompare(B)*_perCarSort.dir;
+      return (A-B)*_perCarSort.dir;
+    });
+  }
+  tbody.innerHTML = data.map(r=>`<tr>
+    <td>${r.nome}</td>
+    <td>${r.E_bat.toFixed(2)}</td>
+    <td>${r.E_pv.toFixed(2)}</td>
+    <td>${fmtPct(r.participacao)}</td>
+    <td>${Number.isFinite(r.horasFVeq)?r.horasFVeq.toFixed(2):'—'}</td>
+    <td>${Number.isFinite(r.t_lim)?r.t_lim.toFixed(2):'—'}</td>
+  </tr>`).join('');
+}
+document.addEventListener('click', e=>{
+  if(e.target.matches('th.sortable')){
+    const k=e.target.getAttribute('data-sort');
+    if(_perCarSort.key===k){ _perCarSort.dir*=-1; } else { _perCarSort.key=k; _perCarSort.dir=1; }
+    renderPerCarTable();
+  }
+});
 
 // Listeners para mudança de seleção atualizar sugestão de nome
 document.addEventListener('change', (e)=>{
@@ -917,6 +985,8 @@ function getConfigFromFields(){
   const meta = {
     numChargers: num(document.getElementById('numChargers')?.value,1),
     taperFactor: num(document.getElementById('taperFactorInput')?.value,0.55),
+  tarifa: num(document.getElementById('tarifaInput')?.value,0.95),
+  autoCalcMode: document.getElementById('autoCalcMode')?.value||'manual',
     version: '1.1'
   };
   return {carros:carrosData, placas:placasData, meta};
@@ -980,8 +1050,12 @@ function loadConfig(){
   if(conf.meta){
     const nc = document.getElementById('numChargers');
     const tf = document.getElementById('taperFactorInput');
+  const tarifa = document.getElementById('tarifaInput');
+  const acm = document.getElementById('autoCalcMode');
     if(nc && Number(conf.meta.numChargers)>0) nc.value = conf.meta.numChargers;
     if(tf && Number(conf.meta.taperFactor)>0) tf.value = conf.meta.taperFactor;
+  if(tarifa && conf.meta.tarifa!=null) tarifa.value = conf.meta.tarifa;
+  if(acm && conf.meta.autoCalcMode) acm.value = conf.meta.autoCalcMode;
   }
   localStorage.setItem('evLastConfig', nome);
   const input = document.getElementById('configNameInput');
@@ -1179,6 +1253,23 @@ function calcular(){
   const P_pico_FV = kWp_total * pr_total;
   const P_lim = Math.max(0, Math.min(onboardKW_total || Infinity, P_pico_FV || Infinity));
   const t_min = (P_lim > 0) ? (E_bat_total / P_lim) : Infinity;
+  // Saldo diário FV vs demanda
+  const saldo = E_dia - E_pv_total; // positivo excedente, negativo déficit
+  const tarifa = num(document.getElementById('tarifaInput')?.value,0.95);
+  const kpiDef = document.getElementById('kpiDeficit');
+  const defNote = document.getElementById('deficitNote');
+  if(kpiDef && defNote){
+    if(Number.isFinite(saldo)){
+      if(saldo>=0){
+        kpiDef.innerHTML = `<span class="ok">+${saldo.toFixed(2)} kWh</span>`;
+        defNote.textContent = 'Excedente diário estimado.';
+      } else {
+        const deficit = -saldo; const custo = deficit * tarifa;
+        kpiDef.innerHTML = `<span class="err">-${deficit.toFixed(2)} kWh</span>`;
+        defNote.textContent = `Déficit: R$ ${custo.toFixed(2)}/dia (tarifa ${tarifa.toFixed(2)})`;
+      }
+    } else { kpiDef.textContent='—'; defNote.textContent='—'; }
+  }
 
   if (P_pico_FV < 1.0) alerts.push("Potência de pico FV baixa; carregamento será bem lento.");
   if (!Number.isFinite(dias) || !Number.isFinite(horasSol)) alerts.push("Verifique os campos: há valores inválidos.");
@@ -1197,19 +1288,16 @@ function calcular(){
   const seqInfo = document.getElementById('seqTotalInfo');
   if(perCarRows.length && kWp_total>0 && pr_total>0){
     wrapper.style.display='block';
-    tbody.innerHTML = perCarRows.map(r=>{
-      const horasFVeq = (kWp_total*pr_total>0) ? (r.E_pv / (kWp_total*pr_total)) : Infinity; // horas de sol equivalente
+    const enriched = perCarRows.map(r=>{
+      const horasFVeq = (kWp_total*pr_total>0) ? (r.E_pv / (kWp_total*pr_total)) : Infinity;
       const limitePot = Math.min(r.onboardKW||Infinity, kWp_total*pr_total || Infinity);
       const t_lim = (limitePot>0) ? (r.E_bat / limitePot) : Infinity;
-      if(Number.isFinite(t_lim)) seqSumHoras += t_lim; // para sequência
-      return `<tr>
-        <td>${r.nome}</td>
-        <td>${r.E_bat.toFixed(2)}</td>
-        <td>${r.E_pv.toFixed(2)}</td>
-        <td>${Number.isFinite(horasFVeq)?horasFVeq.toFixed(2):'—'}</td>
-        <td>${Number.isFinite(t_lim)?t_lim.toFixed(2):'—'}</td>
-      </tr>`;
-    }).join('');
+      if(Number.isFinite(t_lim)) seqSumHoras += t_lim;
+      const participacao = (E_pv_total>0? (r.E_pv/E_pv_total)*100 : 0);
+      return {...r, horasFVeq, t_lim, participacao};
+    });
+    window._perCarData = enriched;
+    renderPerCarTable();
     // Ajuste de taper e fila real com múltiplos carregadores
     const chargers = Math.max(1, num(document.getElementById('numChargers')?.value,1));
     const taperFactorUser = clamp(num(document.getElementById('taperFactorInput')?.value,0.55),0.1,1);
@@ -1301,6 +1389,8 @@ function limpar(){
   ['kpiEbat','kpiEpv','kpiEdia','kpiDias','kpiHoras','kpiTmin'].forEach(id=>{
     document.getElementById(id).textContent = '—';
   });
+  const kd=document.getElementById('kpiDeficit'); if(kd) kd.textContent='—';
+  const dn=document.getElementById('deficitNote'); if(dn) dn.textContent='—';
   document.getElementById('alerts').style.display = 'none';
   document.getElementById('alertText').textContent = '';
 }
@@ -1397,8 +1487,12 @@ function importarJSON(input){
           if(obj.current.meta){
             const nc = document.getElementById('numChargers');
             const tf = document.getElementById('taperFactorInput');
+            const tarifa = document.getElementById('tarifaInput');
+            const acm = document.getElementById('autoCalcMode');
             if(nc && Number(obj.current.meta.numChargers)>0) nc.value = obj.current.meta.numChargers;
             if(tf && Number(obj.current.meta.taperFactor)>0) tf.value = obj.current.meta.taperFactor;
+            if(tarifa && obj.current.meta.tarifa!=null) tarifa.value = obj.current.meta.tarifa;
+            if(acm && obj.current.meta.autoCalcMode) acm.value = obj.current.meta.autoCalcMode;
           }
         }
         updateSavedConfigs();
@@ -1424,8 +1518,12 @@ function importarJSON(input){
         if(obj.meta){
           const nc = document.getElementById('numChargers');
           const tf = document.getElementById('taperFactorInput');
+          const tarifa = document.getElementById('tarifaInput');
+          const acm = document.getElementById('autoCalcMode');
           if(nc && Number(obj.meta.numChargers)>0) nc.value = obj.meta.numChargers;
           if(tf && Number(obj.meta.taperFactor)>0) tf.value = obj.meta.taperFactor;
+          if(tarifa && obj.meta.tarifa!=null) tarifa.value = obj.meta.tarifa;
+          if(acm && obj.meta.autoCalcMode) acm.value = obj.meta.autoCalcMode;
         }
         calcular();
         const fb = document.getElementById('configFeedback');
@@ -1479,6 +1577,23 @@ document.getElementById('loadCarModelBtn').addEventListener('click', loadCarMode
 document.getElementById('savePlacaModelBtn').addEventListener('click', savePlacaModel);
 document.getElementById('loadPlacaModelBtn').addEventListener('click', loadPlacaModel);
 
+// Botão imprimir dinâmico
+const actionsEl=document.querySelector('.panel .actions');
+if(actionsEl && !document.getElementById('printBtn')){
+  const bp=document.createElement('button'); bp.id='printBtn'; bp.textContent='Imprimir'; bp.className='secondary'; bp.onclick=()=>window.print(); actionsEl.appendChild(bp);
+}
+
+// Auto-cálculo
+let _autoTimer=null;
+function scheduleAuto(){
+  const mode=document.getElementById('autoCalcMode')?.value||'manual';
+  if(mode!=='auto') return;
+  if(_autoTimer) clearTimeout(_autoTimer);
+  _autoTimer=setTimeout(()=>{ if(validarCampos()) calcular(); },420);
+}
+document.addEventListener('input', e=>{ if(e.target.classList.contains('field')) scheduleAuto(); });
+document.getElementById('autoCalcMode')?.addEventListener('change', e=>{ if(e.target.value==='auto'){ showToast('Auto-cálculo ativado'); scheduleAuto(); }});
+
 // Inicialização
 renderCarros(); // já cria Carro 1
 renderPlacas(); // já cria Placa 1
@@ -1514,6 +1629,7 @@ if(lastCfg){
     }
   },150);
 }
+showToast('Pronto para usar.','ok',2600);
 </script>
 </body>
 </html>
