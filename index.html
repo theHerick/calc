@@ -260,16 +260,10 @@
   <div class="container">
     <!-- Entrada -->
     <div class="panel">
-      <div class="section-title">⚡ Especificações do Carro</div>
-      <div id="carrosContainer"></div>
-      <div class="actions">
-        <button id="addCarroBtn" type="button">Adicionar Carro</button>
-      </div>
-      <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
-      <div id="placasContainer"></div>
-      <div class="actions">
-        <button id="addPlacaBtn" type="button">Adicionar Placa</button>
-      </div>
+  <div class="section-title">⚡ Especificações do Carro</div>
+  <div id="carrosContainer"></div>
+  <div class="section-title" style="margin-top:16px;">☀️ Sistema Fotovoltaico</div>
+  <div id="placasContainer"></div>
       <div class="actions">
         <button id="calcBtn">Calcular</button>
         <button class="secondary" id="resetBtn">Limpar</button>
@@ -323,20 +317,8 @@
             </div>
           </div>
         </div>
-      </div>
-// Modal salvar/modelos
 document.addEventListener('DOMContentLoaded', function(){
-  const openBtn = document.getElementById('openSaveModalBtn');
-  const modal = document.getElementById('saveModal');
-  const closeBtn = document.getElementById('closeSaveModalBtn');
-  if(openBtn && modal && closeBtn){
-    openBtn.addEventListener('click', ()=>{ modal.style.display='flex'; });
-    closeBtn.addEventListener('click', ()=>{ modal.style.display='none'; });
-    modal.addEventListener('click', function(e){
-      if(e.target===modal) modal.style.display='none';
-    });
-  }
-});
+  </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
         <div class="hint">
@@ -434,6 +416,18 @@ function fmtDias(x){
   if (!Number.isFinite(x)) return '—';
   if (x < 1) return (x*24).toFixed(1) + ' h';
   return x.toFixed(2) + ' dias';
+}
+
+// Lógica do modal (abrir/fechar) integrada corretamente
+function initSaveModal(){
+  const openBtn = document.getElementById('openSaveModalBtn');
+  const modal = document.getElementById('saveModal');
+  const closeBtn = document.getElementById('closeSaveModalBtn');
+  if(!openBtn || !modal || !closeBtn) return;
+  openBtn.addEventListener('click', ()=>{ modal.style.display='flex'; });
+  closeBtn.addEventListener('click', ()=>{ modal.style.display='none'; });
+  modal.addEventListener('click', (e)=>{ if(e.target === modal) modal.style.display='none'; });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') modal.style.display='none'; });
 }
 
 // Carros dinâmicos
@@ -583,6 +577,8 @@ function loadConfig(){
   nextPlacaId = placas.length;
   renderCarros();
   renderPlacas();
+  updateSavedCarModels();
+  updateSavedPlacaModels();
 }
 function deleteConfig(){
   const select = document.getElementById('savedConfigs');
@@ -797,8 +793,6 @@ function limpar(){
 }
 
 // Eventos
-document.getElementById('addCarroBtn').addEventListener('click', adicionarCarro);
-document.getElementById('addPlacaBtn').addEventListener('click', adicionarPlaca);
 document.getElementById('calcBtn').addEventListener('click', calcular);
 document.getElementById('resetBtn').addEventListener('click', limpar);
 document.getElementById('saveConfigModalBtn').addEventListener('click', saveConfig);
@@ -810,11 +804,12 @@ document.getElementById('savePlacaModelBtn').addEventListener('click', savePlaca
 document.getElementById('loadPlacaModelBtn').addEventListener('click', loadPlacaModel);
 
 // Inicialização
-renderCarros();
-renderPlacas();
+renderCarros(); // já cria Carro 1
+renderPlacas(); // já cria Placa 1
 updateSavedConfigs();
 updateSavedCarModels();
 updateSavedPlacaModels();
+initSaveModal();
 calcular();
 </script>
 </body>
