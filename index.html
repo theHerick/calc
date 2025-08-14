@@ -350,7 +350,11 @@
       <h3 class="modal-title">Salvar / Modelos</h3>
       <div class="modal-content">
         <div class="modal-block">
-          <label for="savedConfigs" class="modal-block-title">Configurações</label>
+          <div class="modal-block-head">
+            <span class="modal-block-title">Configurações</span>
+            <span class="count-badge" id="countConfigs">0</span>
+          </div>
+          <p class="mini-hint">Salve conjuntos completos (carros + placas) para reutilizar depois.</p>
           <div class="modal-row">
             <input id="configNameInput" class="field" placeholder="Nome da configuração">
             <button id="saveConfigModalBtn" type="button">Salvar</button>
@@ -362,7 +366,11 @@
           </div>
         </div>
         <div class="modal-block">
-          <label for="savedCarModels" class="modal-block-title">Modelos de Carro</label>
+          <div class="modal-block-head">
+            <span class="modal-block-title">Modelos de Carro</span>
+            <span class="count-badge" id="countCarModels">0</span>
+          </div>
+          <p class="mini-hint">Salve especificações típicas (bateria, eficiência, limites) de cada veículo.</p>
           <div class="modal-row">
             <input id="carModelNameInput" class="field" placeholder="Nome do modelo">
             <select id="carSelect" title="Carro alvo"></select>
@@ -375,7 +383,11 @@
           </div>
         </div>
         <div class="modal-block">
-          <label for="savedPlacaModels" class="modal-block-title">Modelos de Placa</label>
+          <div class="modal-block-head">
+            <span class="modal-block-title">Modelos de Placa</span>
+            <span class="count-badge" id="countPlacaModels">0</span>
+          </div>
+          <p class="mini-hint">Guarde combinações de potência, PR e PSH para cenários diferentes.</p>
           <div class="modal-row">
             <input id="placaModelNameInput" class="field" placeholder="Nome do modelo">
             <select id="placaSelect" title="Placa alvo"></select>
@@ -402,9 +414,17 @@
   .modal-close{position:absolute;top:10px;right:12px;background:transparent;border:none;color:var(--err);font-size:26px;cursor:pointer;line-height:1;padding:2px 8px;border-radius:10px;}
   .modal-close:hover{background:rgba(255,143,143,0.15);} 
   .modal-content{display:flex;flex-direction:column;gap:26px;}
-  .modal-block-title{font-weight:600;color:var(--accent);margin-bottom:8px;display:block;}
+  .modal-block{background:rgba(255,255,255,0.04);padding:14px 16px 18px;border:1px solid rgba(255,255,255,0.12);border-radius:16px;position:relative;}
+  .modal-block:before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:linear-gradient(140deg,rgba(124,207,255,0.35),rgba(161,140,255,0.25) 35%,rgba(255,255,255,0.05) 70%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;}
+  .modal-block-title{font-weight:600;color:var(--accent);display:block;}
+  .modal-block-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;}
+  .mini-hint{margin:4px 0 10px;font-size:11px;letter-spacing:.3px;color:var(--muted);opacity:.85;}
+  .count-badge{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#0b1020;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,0.35);}
   .modal-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   .modal-row .field, .modal-row select{flex:1;min-width:160px;}
+  .modal-row select{background:var(--card);border:1px solid rgba(255,255,255,0.18);color:var(--text);padding:12px 12px;border-radius:12px;outline:none;appearance:none;position:relative;}
+  .modal-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,207,255,0.15);} 
+  .modal-row button{min-width:90px;}
   body.modal-open{overflow:hidden;}
   @media (max-width:640px){ .modal-box{padding:24px 18px;} .modal-row{flex-direction:column;align-items:stretch;} .modal-row .field, .modal-row select, .modal-row button{width:100%;} }
   `;
@@ -584,6 +604,8 @@ function updateSavedConfigs(){
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
   const select = document.getElementById('savedConfigs');
   select.innerHTML = Object.keys(configs).map(n=>`<option value="${n}">${n}</option>`).join('');
+  const badge = document.getElementById('countConfigs');
+  if(badge) badge.textContent = Object.keys(configs).length;
 }
 function loadConfig(){
   const select = document.getElementById('savedConfigs');
@@ -640,6 +662,8 @@ function updateSavedCarModels(){
   let models = JSON.parse(localStorage.getItem('carModels')||'{}');
   const savedSel = document.getElementById('savedCarModels');
   if(savedSel) savedSel.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
+  const badge = document.getElementById('countCarModels');
+  if(badge) badge.textContent = Object.keys(models).length;
   // Atualiza selects de carros
   const carSelect = document.getElementById('carSelect');
   const carSelectApply = document.getElementById('carSelectApply');
@@ -694,6 +718,8 @@ function updateSavedPlacaModels(){
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
   const savedSel = document.getElementById('savedPlacaModels');
   if(savedSel) savedSel.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
+  const badge = document.getElementById('countPlacaModels');
+  if(badge) badge.textContent = Object.keys(models).length;
   const placaSelect = document.getElementById('placaSelect');
   const placaSelectApply = document.getElementById('placaSelectApply');
   const options = placas.map(p=>`<option value="${p.id}">${document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1)}</option>`).join('');
