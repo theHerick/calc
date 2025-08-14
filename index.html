@@ -281,6 +281,13 @@
         <button id="loadConfigBtn" type="button">Carregar</button>
         <button id="deleteConfigBtn" type="button">Excluir</button>
       </div>
+      <div style="margin-top:10px">
+        <label for="savedCarModels">Modelos de Carro Salvos:</label>
+        <select id="savedCarModels"></select>
+        <button id="saveCarModelBtn" type="button">Salvar Modelo</button>
+        <button id="loadCarModelBtn" type="button">Aplicar em Carro Selecionado</button>
+        <select id="carSelect"></select>
+      </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
         <div class="hint">
@@ -418,6 +425,7 @@ let nextPlacaId = 1;
 function renderCarros(){
   const container = document.getElementById('carrosContainer');
   container.innerHTML = carros.map(c=>carroFields(c.id, c)).join('');
+  updateSavedCarModels();
 }
 function renderPlacas(){
   const container = document.getElementById('placasContainer');
@@ -503,6 +511,57 @@ function deleteConfig(){
   delete configs[nome];
   localStorage.setItem('evConfigs', JSON.stringify(configs));
   updateSavedConfigs();
+}
+
+// Salvar/Carregar modelos de carro
+function getCarModelFromFields(id){
+  return {
+    nome: document.getElementById('carroNome'+id)?.value||'',
+    capNominal: num(document.getElementById('capNominal'+id)?.value, 60),
+    percUtil: num(document.getElementById('percUtil'+id)?.value, 95),
+    socIni: num(document.getElementById('socIni'+id)?.value, 20),
+    socFim: num(document.getElementById('socFim'+id)?.value, 100),
+    etaGlobal: num(document.getElementById('etaGlobal'+id)?.value, 85),
+    onboardKW: num(document.getElementById('onboardKW'+id)?.value, 7.4)
+  };
+}
+function saveCarModel(){
+  if(carros.length===0) return;
+  const id = carros[0].id; // por padrão salva o primeiro, pode adaptar para selecionar
+  const nome = prompt('Nome para salvar modelo de carro:');
+  if(!nome) return;
+  let models = JSON.parse(localStorage.getItem('carModels')||'{}');
+  models[nome] = getCarModelFromFields(id);
+  localStorage.setItem('carModels', JSON.stringify(models));
+  updateSavedCarModels();
+  alert('Modelo de carro salvo!');
+}
+function updateSavedCarModels(){
+  let models = JSON.parse(localStorage.getItem('carModels')||'{}');
+  const select = document.getElementById('savedCarModels');
+  select.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
+  // Atualiza select de carros
+  const carSelect = document.getElementById('carSelect');
+  carSelect.innerHTML = carros.map(c=>`<option value="${c.id}">${document.getElementById('carroNome'+c.id)?.value||'Carro '+(c.id+1)}</option>`).join('');
+}
+function loadCarModel(){
+  const select = document.getElementById('savedCarModels');
+  const nome = select.value;
+  const carSelect = document.getElementById('carSelect');
+  const carId = Number(carSelect.value);
+  if(!nome || isNaN(carId)) return;
+  let models = JSON.parse(localStorage.getItem('carModels')||'{}');
+  const model = models[nome];
+  if(!model) return;
+  // Aplica modelo nos campos do carro selecionado
+  document.getElementById('carroNome'+carId).value = model.nome;
+  document.getElementById('capNominal'+carId).value = model.capNominal;
+  document.getElementById('percUtil'+carId).value = model.percUtil;
+  document.getElementById('socIni'+carId).value = model.socIni;
+  document.getElementById('socFim'+carId).value = model.socFim;
+  document.getElementById('etaGlobal'+carId).value = model.etaGlobal;
+  document.getElementById('onboardKW'+carId).value = model.onboardKW;
+  alert('Modelo aplicado ao carro selecionado!');
 }
 
 // Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
@@ -608,11 +667,14 @@ document.getElementById('resetBtn').addEventListener('click', limpar);
 document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
 document.getElementById('loadConfigBtn').addEventListener('click', loadConfig);
 document.getElementById('deleteConfigBtn').addEventListener('click', deleteConfig);
+document.getElementById('saveCarModelBtn').addEventListener('click', saveCarModel);
+document.getElementById('loadCarModelBtn').addEventListener('click', loadCarModel);
 
 // Inicialização
 renderCarros();
 renderPlacas();
 updateSavedConfigs();
+updateSavedCarModels();
 calcular();
 </script>
 </body>
