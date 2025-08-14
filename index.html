@@ -273,7 +273,6 @@
       <div class="actions">
         <button id="calcBtn">Calcular</button>
         <button class="secondary" id="resetBtn">Limpar</button>
-        <button id="saveConfigBtn" type="button">Salvar Configuração</button>
       </div>
       <!-- Botão único para abrir modal de salvar/modelos -->
       <div style="margin-top:18px; display:flex; justify-content:flex-end;">
@@ -283,11 +282,15 @@
         <div style="background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:32px 28px; min-width:340px; max-width:96vw; margin:auto; position:relative;">
           <button type="button" id="closeSaveModalBtn" style="position:absolute; top:16px; right:18px; background:transparent; color:var(--err); font-size:22px; border:none; cursor:pointer;">×</button>
           <h3 style="color:var(--accent); margin-top:0; margin-bottom:18px; font-size:20px;">Salvar / Modelos</h3>
-          <div style="display:flex; flex-direction:column; gap:18px;">
-            <div>
-              <label for="savedConfigs">Configurações Salvas:</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <select id="savedConfigs"></select>
+          <div style="display:flex; flex-direction:column; gap:22px; max-height:70vh; overflow-y:auto;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label for="savedConfigs" style="font-weight:600; color:var(--accent);">Configurações</label>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <input id="configNameInput" class="field" placeholder="Nome da configuração" style="flex:1; min-width:160px;">
+                <button id="saveConfigModalBtn" type="button">Salvar</button>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+                <select id="savedConfigs" style="flex:1; min-width:160px;"></select>
                 <button id="loadConfigBtn" type="button">Carregar</button>
                 <button id="deleteConfigBtn" type="button">Excluir</button>
               </div>
@@ -295,19 +298,27 @@
             <div>
               <label for="savedCarModels">Modelos de Carro:</label>
               <div style="display:flex; gap:6px; align-items:center;">
-                <select id="savedCarModels"></select>
-                <button id="saveCarModelBtn" type="button">Salvar</button>
-                <button id="loadCarModelBtn" type="button">Aplicar</button>
-                <select id="carSelect"></select>
+                <input id="carModelNameInput" class="field" placeholder="Nome do modelo" style="flex:1; min-width:130px;">
+                <select id="carSelect" title="Carro alvo"></select>
+                <button id="saveCarModelBtn" type="button" title="Salvar modelo do carro selecionado">Salvar</button>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+                <select id="savedCarModels" style="flex:1; min-width:160px;"></select>
+                <select id="carSelectApply" title="Aplicar em" style="min-width:90px;"></select>
+                <button id="loadCarModelBtn" type="button" title="Aplicar modelo no carro escolhido">Aplicar</button>
               </div>
             </div>
             <div>
               <label for="savedPlacaModels">Modelos de Placa:</label>
               <div style="display:flex; gap:6px; align-items:center;">
-                <select id="savedPlacaModels"></select>
-                <button id="savePlacaModelBtn" type="button">Salvar</button>
-                <button id="loadPlacaModelBtn" type="button">Aplicar</button>
-                <select id="placaSelect"></select>
+                <input id="placaModelNameInput" class="field" placeholder="Nome do modelo" style="flex:1; min-width:130px;">
+                <select id="placaSelect" title="Placa alvo"></select>
+                <button id="savePlacaModelBtn" type="button" title="Salvar modelo da placa selecionada">Salvar</button>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+                <select id="savedPlacaModels" style="flex:1; min-width:160px;"></select>
+                <select id="placaSelectApply" title="Aplicar em" style="min-width:90px;"></select>
+                <button id="loadPlacaModelBtn" type="button" title="Aplicar modelo na placa escolhida">Aplicar</button>
               </div>
             </div>
           </div>
@@ -545,7 +556,8 @@ function getConfigFromFields(){
 }
 
 function saveConfig(){
-  const nome = prompt('Nome para salvar configuração:');
+  const input = document.getElementById('configNameInput');
+  const nome = input?.value?.trim() || prompt('Nome para salvar configuração:');
   if(!nome) return;
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
   configs[nome] = getConfigFromFields();
@@ -596,9 +608,11 @@ function getCarModelFromFields(id){
 }
 function saveCarModel(){
   if(carros.length===0) return;
-  const id = carros[0].id; // por padrão salva o primeiro, pode adaptar para selecionar
-  const nome = prompt('Nome para salvar modelo de carro:');
-  if(!nome) return;
+  const targetSelect = document.getElementById('carSelect');
+  const id = Number(targetSelect?.value ?? carros[0].id);
+  const nomeInput = document.getElementById('carModelNameInput');
+  const nome = nomeInput?.value?.trim();
+  if(!nome){ alert('Defina um nome para o modelo de carro.'); return; }
   let models = JSON.parse(localStorage.getItem('carModels')||'{}');
   models[nome] = getCarModelFromFields(id);
   localStorage.setItem('carModels', JSON.stringify(models));
@@ -607,10 +621,25 @@ function saveCarModel(){
 }
 function updateSavedCarModels(){
   let models = JSON.parse(localStorage.getItem('carModels')||'{}');
-  const select = document.getElementById('savedCarModels');
+  const savedSel = document.getElementById('savedCarModels');
+  if(savedSel) savedSel.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
+  // Atualiza selects de carros
+  const carSelect = document.getElementById('carSelect');
+  const carSelectApply = document.getElementById('carSelectApply');
+  const options = carros.map(c=>`<option value="${c.id}">${document.getElementById('carroNome'+c.id)?.value||'Carro '+(c.id+1)}</option>`).join('');
+  if(carSelect) carSelect.innerHTML = options;
+  if(carSelectApply) carSelectApply.innerHTML = options;
+}
+function loadCarModel(){
+  const savedSel = document.getElementById('savedCarModels');
+  const applySel = document.getElementById('carSelectApply');
+  if(!savedSel || !applySel) return;
+  const nome = savedSel.value;
+  const carId = Number(applySel.value);
+  if(!nome || isNaN(carId)) return;
+  let models = JSON.parse(localStorage.getItem('carModels')||'{}');
   const model = models[nome];
   if(!model) return;
-  // Aplica modelo nos campos do carro selecionado
   document.getElementById('carroNome'+carId).value = model.nome;
   document.getElementById('capNominal'+carId).value = model.capNominal;
   document.getElementById('percUtil'+carId).value = model.percUtil;
@@ -618,7 +647,7 @@ function updateSavedCarModels(){
   document.getElementById('socFim'+carId).value = model.socFim;
   document.getElementById('etaGlobal'+carId).value = model.etaGlobal;
   document.getElementById('onboardKW'+carId).value = model.onboardKW;
-  alert('Modelo aplicado ao carro selecionado!');
+  alert('Modelo aplicado!');
 }
 
 // Salvar/Carregar modelos de placa
@@ -633,9 +662,11 @@ function getPlacaModelFromFields(id){
 }
 function savePlacaModel(){
   if(placas.length===0) return;
-  const id = placas[0].id; // por padrão salva a primeira, pode adaptar para selecionar
-  const nome = prompt('Nome para salvar modelo de placa:');
-  if(!nome) return;
+  const targetSelect = document.getElementById('placaSelect');
+  const id = Number(targetSelect?.value ?? placas[0].id);
+  const nomeInput = document.getElementById('placaModelNameInput');
+  const nome = nomeInput?.value?.trim();
+  if(!nome){ alert('Defina um nome para o modelo de placa.'); return; }
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
   models[nome] = getPlacaModelFromFields(id);
   localStorage.setItem('placaModels', JSON.stringify(models));
@@ -644,28 +675,30 @@ function savePlacaModel(){
 }
 function updateSavedPlacaModels(){
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
-  const select = document.getElementById('savedPlacaModels');
-  select.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
-  // Atualiza select de placas
+  const savedSel = document.getElementById('savedPlacaModels');
+  if(savedSel) savedSel.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
   const placaSelect = document.getElementById('placaSelect');
-  placaSelect.innerHTML = placas.map(p=>`<option value="${p.id}">${document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1)}</option>`).join('');
+  const placaSelectApply = document.getElementById('placaSelectApply');
+  const options = placas.map(p=>`<option value="${p.id}">${document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1)}</option>`).join('');
+  if(placaSelect) placaSelect.innerHTML = options;
+  if(placaSelectApply) placaSelectApply.innerHTML = options;
 }
 function loadPlacaModel(){
-  const select = document.getElementById('savedPlacaModels');
-  const nome = select.value;
-  const placaSelect = document.getElementById('placaSelect');
-  const placaId = Number(placaSelect.value);
+  const savedSel = document.getElementById('savedPlacaModels');
+  const applySel = document.getElementById('placaSelectApply');
+  if(!savedSel || !applySel) return;
+  const nome = savedSel.value;
+  const placaId = Number(applySel.value);
   if(!nome || isNaN(placaId)) return;
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
   const model = models[nome];
   if(!model) return;
-  // Aplica modelo nos campos da placa selecionada
   document.getElementById('placaNome'+placaId).value = model.nome;
   document.getElementById('kWp'+placaId).value = model.kWp;
   document.getElementById('pr'+placaId).value = model.pr;
   document.getElementById('psh'+placaId).value = model.psh;
   document.getElementById('obs'+placaId).value = model.obs;
-  alert('Modelo aplicado à placa selecionada!');
+  alert('Modelo aplicado!');
 }
 
 // Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
@@ -768,7 +801,7 @@ document.getElementById('addCarroBtn').addEventListener('click', adicionarCarro)
 document.getElementById('addPlacaBtn').addEventListener('click', adicionarPlaca);
 document.getElementById('calcBtn').addEventListener('click', calcular);
 document.getElementById('resetBtn').addEventListener('click', limpar);
-document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+document.getElementById('saveConfigModalBtn').addEventListener('click', saveConfig);
 document.getElementById('loadConfigBtn').addEventListener('click', loadConfig);
 document.getElementById('deleteConfigBtn').addEventListener('click', deleteConfig);
 document.getElementById('saveCarModelBtn').addEventListener('click', saveCarModel);
