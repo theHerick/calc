@@ -1301,11 +1301,27 @@ function limpar(){
 
 // Exportar / Importar JSON
 function exportarJSON(){
-  const data = getConfigFromFields();
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  // Snapshot atual
+  const current = getConfigFromFields();
+  // Tudo salvo no localStorage
+  const evConfigs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+  const carModels = JSON.parse(localStorage.getItem('carModels')||'{}');
+  const placaModels = JSON.parse(localStorage.getItem('placaModels')||'{}');
+  const evLastConfig = localStorage.getItem('evLastConfig') || '';
+  const bundle = {
+    exportVersion: '1.1',
+    timestamp: new Date().toISOString(),
+    meta: current.meta,
+    current, // estado atual dos campos
+    evConfigs,
+    carModels,
+    placaModels,
+    evLastConfig
+  };
+  const blob = new Blob([JSON.stringify(bundle,null,2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'config_ev_solar.json';
+  a.download = 'ev_solar_bundle.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1317,14 +1333,63 @@ function importarJSON(input){
   reader.onload = e=>{
     try{
       const obj = JSON.parse(e.target.result);
-      if(obj.carros && obj.placas){
+      // Caso seja bundle completo
+      if(obj.evConfigs || obj.carModels || obj.placaModels || obj.current){
+        const existingConfigs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
+        const incomingConfigs = obj.evConfigs || {};
+        let addedC=0, updatedC=0;
+        Object.keys(incomingConfigs).forEach(k=>{ if(!existingConfigs[k]) addedC++; else updatedC++; existingConfigs[k]=incomingConfigs[k]; });
+        localStorage.setItem('evConfigs', JSON.stringify(existingConfigs));
+
+        const existingCarModels = JSON.parse(localStorage.getItem('carModels')||'{}');
+        const incomingCarModels = obj.carModels || {};
+        let addedCar=0, updatedCar=0;
+        Object.keys(incomingCarModels).forEach(k=>{ if(!existingCarModels[k]) addedCar++; else updatedCar++; existingCarModels[k]=incomingCarModels[k]; });
+        localStorage.setItem('carModels', JSON.stringify(existingCarModels));
+
+        const existingPlacaModels = JSON.parse(localStorage.getItem('placaModels')||'{}');
+        const incomingPlacaModels = obj.placaModels || {};
+        let addedPl=0, updatedPl=0;
+        Object.keys(incomingPlacaModels).forEach(k=>{ if(!existingPlacaModels[k]) addedPl++; else updatedPl++; existingPlacaModels[k]=incomingPlacaModels[k]; });
+        localStorage.setItem('placaModels', JSON.stringify(existingPlacaModels));
+
+        if(obj.evLastConfig){ localStorage.setItem('evLastConfig', obj.evLastConfig); }
+
+        // Aplicar estado atual se existir obj.current
+        if(obj.current && obj.current.carros && obj.current.placas){
+          carros = obj.current.carros.map((c,i)=>({...c,id:i}));
+          placas = obj.current.placas.map((p,i)=>({...p,id:i}));
+          nextCarroId = carros.length;
+          nextPlacaId = placas.length;
+          renderCarros(true);
+          renderPlacas(true);
+          if(obj.current.meta){
+            const nc = document.getElementById('numChargers');
+            const tf = document.getElementById('taperFactorInput');
+            if(nc && Number(obj.current.meta.numChargers)>0) nc.value = obj.current.meta.numChargers;
+            if(tf && Number(obj.current.meta.taperFactor)>0) tf.value = obj.current.meta.taperFactor;
+          }
+        }
+        updateSavedConfigs();
+        updateSavedCarModels();
+        updateSavedPlacaModels();
+        calcular();
+        const fb = document.getElementById('configFeedback');
+        if(fb){
+          fb.style.display='block';
+          fb.style.color='var(--ok)';
+          fb.innerHTML = `Bundle importado. Configs +${addedC}/${updatedC} atualiz.; Carros modelo +${addedCar}/${updatedCar}; Placas modelo +${addedPl}/${updatedPl}.`;
+        } else {
+          alert('Bundle importado.');
+        }
+      } else if(obj.carros && obj.placas){
+        // fallback simples (apenas estado atual)
         carros = obj.carros.map((c,i)=>({...c,id:i}));
         placas = obj.placas.map((p,i)=>({...p,id:i}));
         nextCarroId = carros.length;
         nextPlacaId = placas.length;
-  renderCarros(true);
-  renderPlacas(true);
-        // Meta
+        renderCarros(true);
+        renderPlacas(true);
         if(obj.meta){
           const nc = document.getElementById('numChargers');
           const tf = document.getElementById('taperFactorInput');
@@ -1332,9 +1397,8 @@ function importarJSON(input){
           if(tf && Number(obj.meta.taperFactor)>0) tf.value = obj.meta.taperFactor;
         }
         calcular();
-        // Feedback visual
         const fb = document.getElementById('configFeedback');
-        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Importado (não salvo em lista).'; }
+        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Config importada.'; }
       } else {
         alert('Arquivo inválido.');
       }
