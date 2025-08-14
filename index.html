@@ -216,6 +216,15 @@
     margin-top: 6px;
     font-size: 13px;
   }
+  /* tabela de detalhamento */
+  .breakdown-wrapper{margin-top:10px;background:var(--card);border:1px solid rgba(255,255,255,0.14);border-radius:14px;padding:14px 16px;}
+  .breakdown-wrapper h4{margin:0 0 10px;font-size:14px;letter-spacing:.3px;color:var(--accent);display:flex;align-items:center;gap:6px;}
+  .breakdown-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .breakdown-table th{text-align:left;font-weight:600;color:var(--muted);padding:6px 6px;border-bottom:1px solid rgba(255,255,255,0.15);}
+  .breakdown-table td{padding:6px 6px;border-bottom:1px dashed rgba(255,255,255,0.08);}
+  .breakdown-table tbody tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,0.08);font-size:10px;font-weight:600;letter-spacing:.5px;}
+  .seq-total{margin-top:6px;font-size:11px;color:var(--muted);}  
   .note{
     font-size: 12px; color: var(--muted);
   }
@@ -311,7 +320,7 @@
         </div>
         <div class="card">
           <div class="kpi" id="kpiDias">—</div>
-          <div class="kpi-label">Dias necessários</div>
+          <div class="kpi-label">Dias para gerar energia</div>
           <div class="note">Média — varia com clima/estação.</div>
         </div>
         <div class="card">
@@ -327,6 +336,31 @@
       </div>
       <div id="alerts" style="margin-top:8px; display:none;">
         <div class="note" id="alertText"></div>
+      </div>
+      <div class="breakdown-wrapper" id="perCarWrapper" style="display:none;">
+        <h4>🔍 Detalhamento por Carro <span class="tag">estimativas</span></h4>
+        <div style="overflow-x:auto;">
+          <table class="breakdown-table" id="perCarTable">
+            <thead>
+              <tr>
+                <th>Carro</th>
+                <th>E_bat (kWh)</th>
+                <th>E_PV (kWh)</th>
+                <th>Horas FV eq.</th>
+                <th>t_lim carga (h)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="seq-total" id="seqTotalInfo"></div>
+        <details style="margin-top:6px;">
+          <summary style="font-size:11px;cursor:pointer;color:var(--muted);">Notas</summary>
+          <div style="font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px;">
+            Horas FV eq. = E_PV_car / (kWp_total × PR_médio). t_lim carga = E_bat_car / min(P_onboard_car, kWp_total × PR_médio).<br>
+            A soma sequencial assume um único ponto de carga atendendo carros em série. Desconsidera redução de potência em SOC alto.
+          </div>
+        </details>
       </div>
       <details style="margin-top:4px">
         <summary>Notas & Limitações</summary>
@@ -1011,6 +1045,8 @@ function calcular(){
   let etaGlobal_min = 1;
   let alerts = [];
   let nomesCarros = [];
+  let perCarRows = [];
+  let seqSumHoras = 0; // soma sequencial de tempos limitados
   carros.forEach(c => {
     const capNominal = num(document.getElementById('capNominal'+c.id)?.value, 60);
     const percUtil   = clamp(num(document.getElementById('percUtil'+c.id)?.value, 95), 0, 100) / 100.0;
@@ -1029,6 +1065,8 @@ function calcular(){
     onboardKW_total += onboardKW;
     if (etaGlobal < etaGlobal_min) etaGlobal_min = etaGlobal;
     if (etaGlobal < 0.75) alerts.push(`Eficiência global baixa no carro ${nomesCarros[nomesCarros.length-1]}`);
+    // Armazena temporariamente – tempos dependem de totais FV (calculados depois)
+    perCarRows.push({nome: nomesCarros[nomesCarros.length-1], E_bat, E_pv, onboardKW});
   });
 
   // Somar potência e geração das placas
@@ -1069,6 +1107,32 @@ function calcular(){
   document.getElementById('kpiDias').innerHTML  = fmtDias(dias);
   document.getElementById('kpiHoras').innerHTML = fmtH(horasSol);
   document.getElementById('kpiTmin').innerHTML  = Number.isFinite(t_min) ? fmtH(t_min) : '—';
+
+  // Preencher detalhamento por carro
+  const wrapper = document.getElementById('perCarWrapper');
+  const tbody = document.querySelector('#perCarTable tbody');
+  const seqInfo = document.getElementById('seqTotalInfo');
+  if(perCarRows.length && kWp_total>0 && pr_total>0){
+    wrapper.style.display='block';
+    tbody.innerHTML = perCarRows.map(r=>{
+      const horasFVeq = (kWp_total*pr_total>0) ? (r.E_pv / (kWp_total*pr_total)) : Infinity; // horas de sol equivalente
+      const limitePot = Math.min(r.onboardKW||Infinity, kWp_total*pr_total || Infinity);
+      const t_lim = (limitePot>0) ? (r.E_bat / limitePot) : Infinity;
+      if(Number.isFinite(t_lim)) seqSumHoras += t_lim; // para sequência
+      return `<tr>
+        <td>${r.nome}</td>
+        <td>${r.E_bat.toFixed(2)}</td>
+        <td>${r.E_pv.toFixed(2)}</td>
+        <td>${Number.isFinite(horasFVeq)?horasFVeq.toFixed(2):'—'}</td>
+        <td>${Number.isFinite(t_lim)?t_lim.toFixed(2):'—'}</td>
+      </tr>`;
+    }).join('');
+    seqInfo.innerHTML = `Soma sequencial dos tempos limitados (1 ponto de carga): <b>${seqSumHoras.toFixed(2)} h</b>`;
+  } else if(wrapper){
+    wrapper.style.display='none';
+    if(tbody) tbody.innerHTML='';
+    if(seqInfo) seqInfo.textContent='';
+  }
 
   const alertBox = document.getElementById('alerts');
   const alertText = document.getElementById('alertText');
