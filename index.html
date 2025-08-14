@@ -903,7 +903,13 @@ function getConfigFromFields(){
     psh: num(document.getElementById('psh'+p.id)?.value, 5),
     obs: document.getElementById('obs'+p.id)?.value||''
   }));
-  return {carros:carrosData, placas:placasData};
+  // Meta parâmetros
+  const meta = {
+    numChargers: num(document.getElementById('numChargers')?.value,1),
+    taperFactor: num(document.getElementById('taperFactorInput')?.value,0.55),
+    version: '1.1'
+  };
+  return {carros:carrosData, placas:placasData, meta};
 }
 
 function saveConfig(){
@@ -960,6 +966,13 @@ function loadConfig(){
   renderPlacas();
   updateSavedCarModels();
   updateSavedPlacaModels();
+  // Meta
+  if(conf.meta){
+    const nc = document.getElementById('numChargers');
+    const tf = document.getElementById('taperFactorInput');
+    if(nc && Number(conf.meta.numChargers)>0) nc.value = conf.meta.numChargers;
+    if(tf && Number(conf.meta.taperFactor)>0) tf.value = conf.meta.taperFactor;
+  }
   localStorage.setItem('evLastConfig', nome);
   const input = document.getElementById('configNameInput');
   if(input) input.value = nome;
@@ -1307,8 +1320,17 @@ function importarJSON(input){
         nextPlacaId = placas.length;
         renderCarros();
         renderPlacas();
+        // Meta
+        if(obj.meta){
+          const nc = document.getElementById('numChargers');
+          const tf = document.getElementById('taperFactorInput');
+          if(nc && Number(obj.meta.numChargers)>0) nc.value = obj.meta.numChargers;
+          if(tf && Number(obj.meta.taperFactor)>0) tf.value = obj.meta.taperFactor;
+        }
         calcular();
-        alert('Configuração importada.');
+        // Feedback visual
+        const fb = document.getElementById('configFeedback');
+        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Importado (não salvo em lista).'; }
       } else {
         alert('Arquivo inválido.');
       }
