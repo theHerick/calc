@@ -288,6 +288,13 @@
         <button id="loadCarModelBtn" type="button">Aplicar em Carro Selecionado</button>
         <select id="carSelect"></select>
       </div>
+      <div style="margin-top:10px">
+        <label for="savedPlacaModels">Modelos de Placa Salvos:</label>
+        <select id="savedPlacaModels"></select>
+        <button id="savePlacaModelBtn" type="button">Salvar Modelo</button>
+        <button id="loadPlacaModelBtn" type="button">Aplicar em Placa Selecionada</button>
+        <select id="placaSelect"></select>
+      </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
         <div class="hint">
@@ -430,6 +437,7 @@ function renderCarros(){
 function renderPlacas(){
   const container = document.getElementById('placasContainer');
   container.innerHTML = placas.map(p=>placaFields(p.id, p)).join('');
+  updateSavedPlacaModels();
 }
 function adicionarCarro(){
   carros.push({id:nextCarroId++});
@@ -564,6 +572,53 @@ function loadCarModel(){
   alert('Modelo aplicado ao carro selecionado!');
 }
 
+// Salvar/Carregar modelos de placa
+function getPlacaModelFromFields(id){
+  return {
+    nome: document.getElementById('placaNome'+id)?.value||'',
+    kWp: num(document.getElementById('kWp'+id)?.value, 2.0),
+    pr: num(document.getElementById('pr'+id)?.value, 75),
+    psh: num(document.getElementById('psh'+id)?.value, 5),
+    obs: document.getElementById('obs'+id)?.value||''
+  };
+}
+function savePlacaModel(){
+  if(placas.length===0) return;
+  const id = placas[0].id; // por padrão salva a primeira, pode adaptar para selecionar
+  const nome = prompt('Nome para salvar modelo de placa:');
+  if(!nome) return;
+  let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
+  models[nome] = getPlacaModelFromFields(id);
+  localStorage.setItem('placaModels', JSON.stringify(models));
+  updateSavedPlacaModels();
+  alert('Modelo de placa salvo!');
+}
+function updateSavedPlacaModels(){
+  let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
+  const select = document.getElementById('savedPlacaModels');
+  select.innerHTML = Object.keys(models).map(n=>`<option value="${n}">${n}</option>`).join('');
+  // Atualiza select de placas
+  const placaSelect = document.getElementById('placaSelect');
+  placaSelect.innerHTML = placas.map(p=>`<option value="${p.id}">${document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1)}</option>`).join('');
+}
+function loadPlacaModel(){
+  const select = document.getElementById('savedPlacaModels');
+  const nome = select.value;
+  const placaSelect = document.getElementById('placaSelect');
+  const placaId = Number(placaSelect.value);
+  if(!nome || isNaN(placaId)) return;
+  let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
+  const model = models[nome];
+  if(!model) return;
+  // Aplica modelo nos campos da placa selecionada
+  document.getElementById('placaNome'+placaId).value = model.nome;
+  document.getElementById('kWp'+placaId).value = model.kWp;
+  document.getElementById('pr'+placaId).value = model.pr;
+  document.getElementById('psh'+placaId).value = model.psh;
+  document.getElementById('obs'+placaId).value = model.obs;
+  alert('Modelo aplicado à placa selecionada!');
+}
+
 // Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
 
 function calcular(){
@@ -669,12 +724,15 @@ document.getElementById('loadConfigBtn').addEventListener('click', loadConfig);
 document.getElementById('deleteConfigBtn').addEventListener('click', deleteConfig);
 document.getElementById('saveCarModelBtn').addEventListener('click', saveCarModel);
 document.getElementById('loadCarModelBtn').addEventListener('click', loadCarModel);
+document.getElementById('savePlacaModelBtn').addEventListener('click', savePlacaModel);
+document.getElementById('loadPlacaModelBtn').addEventListener('click', loadPlacaModel);
 
 // Inicialização
 renderCarros();
 renderPlacas();
 updateSavedConfigs();
 updateSavedCarModels();
+updateSavedPlacaModels();
 calcular();
 </script>
 </body>
