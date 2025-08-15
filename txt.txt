@@ -1,0 +1,1 @@
+entrada de potencia para geração (curva de geração fotovoltaica kW)
