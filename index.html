@@ -1465,6 +1465,44 @@ function calcular(){
       `Eficiência efetiva agregada (E_bat/E_PV): <b>${(effOverall*100).toFixed(2)}%</b><br>`+
       `Saldo: <b>${saldo>=0?'+':''}${saldo.toFixed(2)} kWh</b>`;
   }
+
+  // Painel de passo a passo dos cálculos por carro
+  let calcSteps = document.getElementById('calcStepsBlock');
+  if(!calcSteps){
+    calcSteps = document.createElement('div');
+    calcSteps.id = 'calcStepsBlock';
+    calcSteps.style.marginTop = '18px';
+    calcSteps.style.fontSize = '13px';
+    calcSteps.style.color = 'var(--muted)';
+    calcSteps.style.background = 'var(--card)';
+    calcSteps.style.borderRadius = '14px';
+    calcSteps.style.padding = '18px 16px';
+    calcSteps.style.boxShadow = '0 4px 18px rgba(0,0,0,0.10)';
+    const resultsCol = document.querySelector('.results');
+    if(resultsCol) resultsCol.appendChild(calcSteps);
+  }
+  // Renderizar passo a passo para cada carro
+  let html = `<div style="font-size:15px;color:var(--accent);margin-bottom:10px;font-weight:600;">Passo a Passo dos Cálculos</div>`;
+  perCarRows.forEach((r, idx) => {
+    html += `<details style="margin-bottom:10px;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;">
+      <summary style="font-size:14px;color:var(--accent);font-weight:600;cursor:pointer;">${r.nome}</summary>
+      <div style="margin-top:8px;">
+        <div style="margin-bottom:6px;"><b>1. Energia útil na bateria (ΔSOC):</b><br>
+        <span style="font-family:monospace;">E_bat = Cap_nominal × %Utilizável × (SOC_final − SOC_inicial)</span><br>
+        <span style="color:var(--text);">E_bat = ${r.capNominal?.toFixed(2) ?? '—'} × ${(r.percUtil*100).toFixed(1)}% × (${(r.socFim*100).toFixed(1)}% − ${(r.socIni*100).toFixed(1)}%) = <b>${r.E_bat.toFixed(2)} kWh</b></span></div>
+        <div style="margin-bottom:6px;"><b>2. Energia FV bruta necessária:</b><br>
+        <span style="font-family:monospace;">E_PV = E_bat / η_global</span><br>
+        <span style="color:var(--text);">E_PV = ${r.E_bat.toFixed(2)} / ${(r.etaGlobal*100).toFixed(1)}% = <b>${r.E_pv.toFixed(2)} kWh</b></span></div>
+        <div style="margin-bottom:6px;"><b>3. Horas FV equivalentes:</b><br>
+        <span style="font-family:monospace;">Horas FV eq. = E_PV / (kWp_total × PR_médio)</span><br>
+        <span style="color:var(--text);">Horas FV eq. = ${r.E_pv.toFixed(2)} / (${kWp_total.toFixed(2)} × ${(pr_total*100).toFixed(1)}%) = <b>${r.horasFVeq?.toFixed(2) ?? '—'} h</b></span></div>
+        <div style="margin-bottom:6px;"><b>4. Tempo mínimo teórico:</b><br>
+        <span style="font-family:monospace;">t_min = E_bat / min(P_onboard, kWp_total × PR_médio)</span><br>
+        <span style="color:var(--text);">t_min = ${r.E_bat.toFixed(2)} / min(${r.onboardKW?.toFixed(2) ?? '—'}, ${(kWp_total*pr_total).toFixed(2)}) = <b>${r.t_lim?.toFixed(2) ?? '—'} h</b></span></div>
+      </div>
+    </details>`;
+  });
+  calcSteps.innerHTML = html;
   if(debug) console.groupEnd();
 }
 
