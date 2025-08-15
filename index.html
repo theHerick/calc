@@ -713,10 +713,10 @@ document.addEventListener('keydown', (e)=>{
 // Carros dinâmicos
 function carroFields(id, values={}){
   return `<div class="card-dyn">
-    <div class="card-title">🚗 ${values.nome||'' ? values.nome : 'Carro '+(id+1)}</div>
-  <button type="button" class="dup-btn" onclick="duplicarCarro(${id})" title="Duplicar">⧉</button>
-    <button type="button" class="remove-btn" onclick="removerCarro(${id})" title="Remover">×</button>
-    <div class="grid">
+    <div class="card-title">🚗 ${values.nome||'' ? values.nome : 'Carro '+(id+1)}
+      <button type="button" class="min-btn" onclick="toggleMinCard('carro${id}')" title="Minimizar" style="margin-left:auto;background:transparent;border:none;color:var(--accent);font-size:16px;cursor:pointer;">−</button>
+    </div>
+    <div class="grid" id="carro${id}">
       <div><label>Nome do carro</label><input class="field" id="carroNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: EV1"></div>
       <div><label>Capacidade da bateria <span class="unit">kWh</span></label><input class="field" id="capNominal${id}" type="number" min="1" step="0.1" value="${values.capNominal||60}"></div>
       <div>
@@ -770,14 +770,16 @@ function carroFields(id, values={}){
       </div>
       <div><label>Potência máx. do carregador onboard <span class="unit">kW</span></label><input class="field" id="onboardKW${id}" type="number" min="0" step="0.1" value="${values.onboardKW||7.4}"></div>
     </div>
+    <button type="button" class="dup-btn" onclick="duplicarCarro(${id})" title="Duplicar">⧉</button>
+    <button type="button" class="remove-btn" onclick="removerCarro(${id})" title="Remover">×</button>
   </div>`;
 }
 function placaFields(id, values={}){
   return `<div class="card-dyn">
-    <div class="card-title">☀️ ${values.nome||'' ? values.nome : 'Placa '+(id+1)}</div>
-  <button type="button" class="dup-btn" onclick="duplicarPlaca(${id})" title="Duplicar">⧉</button>
-    <button type="button" class="remove-btn" onclick="removerPlaca(${id})" title="Remover">×</button>
-    <div class="grid">
+    <div class="card-title">☀️ ${values.nome||'' ? values.nome : 'Placa '+(id+1)}
+      <button type="button" class="min-btn" onclick="toggleMinCard('placa${id}')" title="Minimizar" style="margin-left:auto;background:transparent;border:none;color:var(--accent);font-size:16px;cursor:pointer;">−</button>
+    </div>
+    <div class="grid" id="placa${id}">
       <div><label>Nome da placa</label><input class="field" id="placaNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: FV1"></div>
       <div>
         <label>Potência do array <span class="unit">kWp</span>
@@ -833,7 +835,15 @@ function placaFields(id, values={}){
       <div><label>Horas de Sol Pleno (PSH) <span class="unit">h/dia</span></label><input class="field" id="psh${id}" type="number" min="1" step="0.1" value="${values.psh||5}"></div>
       <div><label>Observação</label><input class="field" id="obs${id}" type="text" value="${values.obs||''}" placeholder="Orientação, inclinação, sombreamento... (opcional)"></div>
     </div>
+    <button type="button" class="dup-btn" onclick="duplicarPlaca(${id})" title="Duplicar">⧉</button>
+    <button type="button" class="remove-btn" onclick="removerPlaca(${id})" title="Remover">×</button>
   </div>`;
+// Minimizar/expandir cards de especificações
+function toggleMinCard(cardId){
+  const el = document.getElementById(cardId);
+  if(!el) return;
+  el.style.display = (el.style.display==='none') ? '' : 'none';
+}
 }
 // Helper para potência do array
 function toggleParrayHelper(id){
@@ -1481,24 +1491,40 @@ function calcular(){
     const resultsCol = document.querySelector('.results');
     if(resultsCol) resultsCol.appendChild(calcSteps);
   }
-  // Renderizar passo a passo para cada carro
+  // Renderizar passo a passo para cada carro com fórmulas desenhadas
   let html = `<div style="font-size:15px;color:var(--accent);margin-bottom:10px;font-weight:600;">Passo a Passo dos Cálculos</div>`;
   perCarRows.forEach((r, idx) => {
     html += `<details style="margin-bottom:10px;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;">
       <summary style="font-size:14px;color:var(--accent);font-weight:600;cursor:pointer;">${r.nome}</summary>
       <div style="margin-top:8px;">
-        <div style="margin-bottom:6px;"><b>1. Energia útil na bateria (ΔSOC):</b><br>
-        <span style="font-family:monospace;">E_bat = Cap_nominal × %Utilizável × (SOC_final − SOC_inicial)</span><br>
-        <span style="color:var(--text);">E_bat = ${r.capNominal?.toFixed(2) ?? '—'} × ${(r.percUtil*100).toFixed(1)}% × (${(r.socFim*100).toFixed(1)}% − ${(r.socIni*100).toFixed(1)}%) = <b>${r.E_bat.toFixed(2)} kWh</b></span></div>
-        <div style="margin-bottom:6px;"><b>2. Energia FV bruta necessária:</b><br>
-        <span style="font-family:monospace;">E_PV = E_bat / η_global</span><br>
-        <span style="color:var(--text);">E_PV = ${r.E_bat.toFixed(2)} / ${(r.etaGlobal*100).toFixed(1)}% = <b>${r.E_pv.toFixed(2)} kWh</b></span></div>
-        <div style="margin-bottom:6px;"><b>3. Horas FV equivalentes:</b><br>
-        <span style="font-family:monospace;">Horas FV eq. = E_PV / (kWp_total × PR_médio)</span><br>
-        <span style="color:var(--text);">Horas FV eq. = ${r.E_pv.toFixed(2)} / (${kWp_total.toFixed(2)} × ${(pr_total*100).toFixed(1)}%) = <b>${r.horasFVeq?.toFixed(2) ?? '—'} h</b></span></div>
-        <div style="margin-bottom:6px;"><b>4. Tempo mínimo teórico:</b><br>
-        <span style="font-family:monospace;">t_min = E_bat / min(P_onboard, kWp_total × PR_médio)</span><br>
-        <span style="color:var(--text);">t_min = ${r.E_bat.toFixed(2)} / min(${r.onboardKW?.toFixed(2) ?? '—'}, ${(kWp_total*pr_total).toFixed(2)}) = <b>${r.t_lim?.toFixed(2) ?? '—'} h</b></span></div>
+        <div style="margin-bottom:10px;">
+          <b>1. Energia útil na bateria (ΔSOC):</b><br>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <svg width="320" height="38" style="vertical-align:middle;"><text x="0" y="28" font-family="serif" font-size="22">E</text><text x="22" y="28" font-family="serif" font-size="18">bat = </text><text x="90" y="28" font-family="serif" font-size="22">C</text><text x="110" y="28" font-family="serif" font-size="18">nom × %Utilizável × (SOC</text><text x="290" y="18" font-family="serif" font-size="14">final</text><text x="220" y="28" font-family="serif" font-size="18"> − SOC</text><text x="290" y="38" font-family="serif" font-size="14">inicial</text><text x="320" y="28" font-family="serif" font-size="18">)</text></svg>
+          </div>
+          <div style="color:var(--text);margin-top:2px;">E_bat = ${r.capNominal?.toFixed(2) ?? '—'} × ${(r.percUtil*100).toFixed(1)}% × (${(r.socFim*100).toFixed(1)}% − ${(r.socIni*100).toFixed(1)}%) = <b>${r.E_bat.toFixed(2)} kWh</b></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <b>2. Energia FV bruta necessária:</b><br>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <svg width="220" height="38"><text x="0" y="28" font-family="serif" font-size="22">E</text><text x="22" y="28" font-family="serif" font-size="18">PV = </text><text x="90" y="28" font-family="serif" font-size="22">E</text><text x="112" y="28" font-family="serif" font-size="18">bat / η</text><text x="170" y="18" font-family="serif" font-size="14">global</text></svg>
+          </div>
+          <div style="color:var(--text);margin-top:2px;">E_PV = ${r.E_bat.toFixed(2)} / ${(r.etaGlobal*100).toFixed(1)}% = <b>${r.E_pv.toFixed(2)} kWh</b></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <b>3. Horas FV equivalentes:</b><br>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <svg width="320" height="38"><text x="0" y="28" font-family="serif" font-size="22">Horas</text><text x="80" y="28" font-family="serif" font-size="18">FV eq. = </text><text x="170" y="28" font-family="serif" font-size="22">E</text><text x="192" y="28" font-family="serif" font-size="18">PV / (kWp</text><text x="270" y="18" font-family="serif" font-size="14">total</text><text x="270" y="38" font-family="serif" font-size="14">× PR</text><text x="310" y="18" font-family="serif" font-size="14">médio</text><text x="320" y="28" font-family="serif" font-size="18">)</text></svg>
+          </div>
+          <div style="color:var(--text);margin-top:2px;">Horas FV eq. = ${r.E_pv.toFixed(2)} / (${kWp_total.toFixed(2)} × ${(pr_total*100).toFixed(1)}%) = <b>${r.horasFVeq?.toFixed(2) ?? '—'} h</b></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <b>4. Tempo mínimo teórico:</b><br>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <svg width="340" height="38"><text x="0" y="28" font-family="serif" font-size="22">t</text><text x="18" y="18" font-family="serif" font-size="14">min</text><text x="40" y="28" font-family="serif" font-size="18"> = </text><text x="80" y="28" font-family="serif" font-size="22">E</text><text x="102" y="28" font-family="serif" font-size="18">bat / min(P</text><text x="190" y="18" font-family="serif" font-size="14">onboard</text><text x="230" y="28" font-family="serif" font-size="18">, kWp</text><text x="270" y="18" font-family="serif" font-size="14">total</text><text x="270" y="38" font-family="serif" font-size="14">× PR</text><text x="310" y="18" font-family="serif" font-size="14">médio</text><text x="320" y="28" font-family="serif" font-size="18">)</text></svg>
+          </div>
+          <div style="color:var(--text);margin-top:2px;">t_min = ${r.E_bat.toFixed(2)} / min(${r.onboardKW?.toFixed(2) ?? '—'}, ${(kWp_total*pr_total).toFixed(2)}) = <b>${r.t_lim?.toFixed(2) ?? '—'} h</b></div>
+        </div>
       </div>
     </details>`;
   });
