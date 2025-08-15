@@ -768,7 +768,7 @@ function placaFields(id, values={}){
         <label>Performance Ratio (PR) <span class="unit">%</span>
           <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="togglePRHelper(${id})" title="Calcular / entender PR">&#x3f;</span>
         </label>
-  <input class="field" id="pr${id}" type="number" min="50" max="95" step="1" value="${values.pr!=null?Math.round(values.pr*100):75}">
+ <input class="field" id="pr${id}" type="number" min="50" max="95" step="1" value="${values.pr!=null?Math.round(values.pr*100):75}">
         <div id="prHelper${id}" style="display:none;margin-top:8px;background:rgba(161,140,255,0.10);padding:10px 12px;border-radius:10px;">
           <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
             <b>PR = E_real / (P_instalada × H_ref) × 100</b><br>
@@ -794,6 +794,12 @@ function placaFields(id, values={}){
             </div>
           </details>
         </div>
+      </div>
+      <div>
+        <label>Eficiência adicional (η array) <span class="unit">%</span>
+          <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" title="Perdas extras específicas deste array não incluídas no PR (cabos extras, otimizadores, micro inversores). Se já tudo incluso no PR mantenha 100%.">🤔</span>
+        </label>
+        <input class="field" id="etaArr${id}" type="number" min="70" max="100" step="1" value="${values.etaArr!=null?Math.round(values.etaArr*100):100}">
       </div>
       <div><label>Horas de Sol Pleno (PSH) <span class="unit">h/dia</span></label><input class="field" id="psh${id}" type="number" min="1" step="0.1" value="${values.psh||5}"></div>
       <div><label>Observação</label><input class="field" id="obs${id}" type="text" value="${values.obs||''}" placeholder="Orientação, inclinação, sombreamento... (opcional)"></div>
@@ -886,7 +892,7 @@ function calcularParray(id){
 }
 
 let carros = [{id:0, percUtil:0.95, etaGlobal:0.85}];
-let placas = [{id:0, pr:0.75}];
+let placas = [{id:0, pr:0.75, etaArr:1}];
 let nextCarroId = 1;
 let nextPlacaId = 1;
 
@@ -914,7 +920,8 @@ function renderPlacas(skipHarvest=false){
       ...p,
       nome: document.getElementById('placaNome'+p.id)?.value || p.nome || '',
       kWp: num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0),
-  pr: (function(v,prev){ v=num(v, prev!=null?prev*100:75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value, p.pr),
+      pr: (function(v,prev){ v=num(v, prev!=null?prev*100:75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value, p.pr),
+      etaArr: (function(v,prev){ v=num(v, prev!=null?prev*100:100); return clamp(v,1,100)/100; })(document.getElementById('etaArr'+p.id)?.value, p.etaArr),
       psh: num(document.getElementById('psh'+p.id)?.value, p.psh||5),
       obs: document.getElementById('obs'+p.id)?.value || p.obs || ''
     }));
@@ -983,7 +990,8 @@ function getConfigFromFields(){
     id: p.id,
     nome: document.getElementById('placaNome'+p.id)?.value||'',
     kWp: num(document.getElementById('kWp'+p.id)?.value, 2.0),
-  pr: (function(v){ v=num(v,75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value),
+    pr: (function(v){ v=num(v,75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value),
+    etaArr: (function(v){ v=num(v,100); return clamp(v,1,100)/100; })(document.getElementById('etaArr'+p.id)?.value),
     psh: num(document.getElementById('psh'+p.id)?.value, 5),
     obs: document.getElementById('obs'+p.id)?.value||''
   }));
@@ -1039,44 +1047,26 @@ function updateSavedConfigs(){
 }
 function loadConfig(){
   const select = document.getElementById('savedConfigs');
-  const nome = select.value;
-  if(!nome) return;
+  const nome = select.value; if(!nome) return;
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
-  const conf = configs[nome];
-  if(!conf) return;
-  carros = conf.carros.map((c,i)=>({
-    ...c,
-    id:i,
-    percUtil: c.percUtil>1? c.percUtil/100 : c.percUtil,
-    etaGlobal: c.etaGlobal>1? c.etaGlobal/100 : c.etaGlobal
-  }));
-  placas = conf.placas.map((p,i)=>({
-    ...p,
-    id:i,
-    pr: p.pr>1? p.pr/100 : p.pr
-  }));
-  nextCarroId = carros.length;
-  nextPlacaId = placas.length;
-  renderCarros(true);
-  renderPlacas(true);
-  updateSavedCarModels();
-  updateSavedPlacaModels();
-  // Meta
+  const conf = configs[nome]; if(!conf) return;
+  carros = conf.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1? c.percUtil/100 : c.percUtil, etaGlobal: c.etaGlobal>1? c.etaGlobal/100 : c.etaGlobal }));
+  placas = conf.placas.map((p,i)=>({...p,id:i, pr: p.pr>1? p.pr/100 : p.pr, etaArr: p.etaArr>1? p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
+  nextCarroId = carros.length; nextPlacaId = placas.length;
+  renderCarros(true); renderPlacas(true); updateSavedCarModels(); updateSavedPlacaModels();
   if(conf.meta){
     const nc = document.getElementById('numChargers');
     const tf = document.getElementById('taperFactorInput');
-  const tarifa = document.getElementById('tarifaInput');
-  const acm = document.getElementById('autoCalcMode');
+    const tarifa = document.getElementById('tarifaInput');
+    const acm = document.getElementById('autoCalcMode');
     if(nc && Number(conf.meta.numChargers)>0) nc.value = conf.meta.numChargers;
     if(tf && Number(conf.meta.taperFactor)>0) tf.value = conf.meta.taperFactor;
-  if(tarifa && conf.meta.tarifa!=null) tarifa.value = conf.meta.tarifa;
-  if(acm && conf.meta.autoCalcMode) acm.value = conf.meta.autoCalcMode;
+    if(tarifa && conf.meta.tarifa!=null) tarifa.value = conf.meta.tarifa;
+    if(acm && conf.meta.autoCalcMode) acm.value = conf.meta.autoCalcMode;
   }
   localStorage.setItem('evLastConfig', nome);
-  const input = document.getElementById('configNameInput');
-  if(input) input.value = nome;
-  const feedback = document.getElementById('configFeedback');
-  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--accent)'; feedback.textContent='Configuração carregada.'; }
+  const input = document.getElementById('configNameInput'); if(input) input.value = nome;
+  const feedback = document.getElementById('configFeedback'); if(feedback){ feedback.style.display='block'; feedback.style.color='var(--accent)'; feedback.textContent='Configuração carregada.'; }
 }
 function deleteConfig(){
   const select = document.getElementById('savedConfigs');
@@ -1252,8 +1242,10 @@ function calcular(){
   let kWp_total = 0;
   let pr_total = 0;
   let psh_total = 0;
+  let etaArr_total = 0;
+  let eff_total = 0; // PR*etaArr ponderado
   let nomesPlacas = [];
-  let pr_weighted_sum = 0; let psh_weighted_sum = 0; let weight_sum = 0;
+  let pr_weighted_sum = 0; let psh_weighted_sum = 0; let eta_weighted_sum = 0; let eff_weighted_sum = 0; let weight_sum = 0;
   placas.forEach(p => {
       const kWp = Math.max(0, num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0));
       // PR já armazenado como fração; converter DOM somente se alterado (DOM em %) -> fração
@@ -1261,31 +1253,39 @@ function calcular(){
         const domVal = document.getElementById('pr'+p.id)?.value;
         if(domVal!=null && domVal!=='') return clamp(num(domVal, (p.pr||0.75)*100),0.01,100)/100; return p.pr||0.75;
       })();
+      const etaArr = (function(){
+        const domVal = document.getElementById('etaArr'+p.id)?.value;
+        if(domVal!=null && domVal!=='') return clamp(num(domVal, (p.etaArr||1)*100),1,100)/100; return p.etaArr||1;
+      })();
       const psh = Math.max(0, num(document.getElementById('psh'+p.id)?.value, p.psh||5));
     nomesPlacas.push(document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1));
     if (kWp <= 0) alerts.push(`Defina a potência do array (kWp) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
     if (psh <= 0) alerts.push(`Defina as horas de sol pleno (PSH) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
     kWp_total += kWp;
     pr_weighted_sum += pr * kWp; // pr já em fração
-    psh_weighted_sum += psh * kWp;
+  psh_weighted_sum += psh * kWp;
+  eta_weighted_sum += etaArr * kWp;
+  eff_weighted_sum += (pr*etaArr) * kWp;
     weight_sum += kWp;
-    if(debug) console.log('[PLACA]', nomesPlacas[nomesPlacas.length-1], {kWp, prFraction: pr, prPercent:(pr*100), psh});
+    if(debug) console.log('[PLACA]', nomesPlacas[nomesPlacas.length-1], {kWp, prFraction: pr, etaArr, fatorEfetivo: pr*etaArr, psh});
   });
   if(weight_sum>0){
     pr_total = pr_weighted_sum / weight_sum;
     psh_total = psh_weighted_sum / weight_sum;
-  } else { pr_total = 0; psh_total = 0; }
+    etaArr_total = eta_weighted_sum / weight_sum;
+    eff_total = eff_weighted_sum / weight_sum;
+  } else { pr_total = 0; psh_total = 0; etaArr_total = 0; eff_total = 0; }
 
   // Cálculos totais
-  const E_dia = kWp_total * psh_total * pr_total;
+  const E_dia = kWp_total * psh_total * eff_total; // usa PR * eta adicional
   const dias = (E_dia > 0) ? (E_pv_total / E_dia) : Infinity;
-  const horasSol = (kWp_total*pr_total > 0) ? (E_pv_total / (kWp_total * pr_total)) : Infinity;
-  const P_pico_FV = kWp_total * pr_total;
+  const horasSol = (kWp_total*eff_total > 0) ? (E_pv_total / (kWp_total * eff_total)) : Infinity;
+  const P_pico_FV = kWp_total * eff_total;
   const P_lim = Math.max(0, Math.min(onboardKW_total || Infinity, P_pico_FV || Infinity));
   const t_min = (P_lim > 0) ? (E_bat_total / P_lim) : Infinity;
   // Saldo diário FV vs demanda
   const saldo = E_dia - E_pv_total; // positivo excedente, negativo déficit
-  if(debug) console.log('[TOTAIS]', {kWp_total, pr_total_fraction: pr_total, pr_total_percent: pr_total*100, psh_total, E_dia, E_bat_total, E_pv_total, saldo, dias, horasSol, P_pico_FV, P_lim, t_min});
+  if(debug) console.log('[TOTAIS]', {kWp_total, pr_total_fraction: pr_total, etaArr_total, eff_total, psh_total, E_dia, E_bat_total, E_pv_total, saldo, dias, horasSol, P_pico_FV, P_lim, t_min});
   const tarifa = num(document.getElementById('tarifaInput')?.value,0.95);
   const kpiDef = document.getElementById('kpiDeficit');
   const defNote = document.getElementById('deficitNote');
@@ -1422,7 +1422,9 @@ function calcular(){
   const diagInner = document.getElementById('diagInner');
   if(diagInner){
     diagInner.innerHTML = `kWp_total: <b>${kWp_total.toFixed(2)}</b><br>`+
-      `PR_ponderado: <b>${(pr_total*100).toFixed(2)}%</b> (fração ${pr_total.toFixed(4)})<br>`+
+      `PR_ponderado: <b>${(pr_total*100).toFixed(2)}%</b><br>`+
+      `η_array_ponderado: <b>${(etaArr_total*100).toFixed(2)}%</b><br>`+
+      `Fator efetivo (PR×η): <b>${(eff_total*100).toFixed(2)}%</b><br>`+
       `PSH_ponderado: <b>${psh_total.toFixed(2)} h</b><br>`+
       `E_dia (geração): <b>${E_dia.toFixed(2)} kWh</b><br>`+
       `E_bat_total: <b>${E_bat_total.toFixed(2)} kWh</b><br>`+
