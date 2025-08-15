@@ -714,12 +714,12 @@ document.addEventListener('keydown', (e)=>{
 function carroFields(id, values={}){
   return `<div class="card-dyn">
     <div class="card-title" style="display:flex;align-items:center;gap:8px;"> 
-      <button type="button" class="min-btn" onclick="toggleMinCard('carroGrid${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
+      <button type="button" class="min-btn" onclick="toggleMinCard('carro${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
       <button type="button" class="dup-btn" onclick="duplicarCarro(${id})" title="Duplicar">⧉</button>
       <button type="button" class="remove-btn" onclick="removerCarro(${id})" title="Remover">×</button>
       <span style="font-weight:700;">🚗 ${values.nome||'' ? values.nome : 'Carro '+(id+1)}</span>
     </div>
-    <div class="grid" id="carroGrid${id}">
+    <div class="grid" id="carro${id}">
       <div><label>Nome do carro</label><input class="field" id="carroNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: EV1"></div>
       <div><label>Capacidade da bateria <span class="unit">kWh</span></label><input class="field" id="capNominal${id}" type="number" min="1" step="0.1" value="${values.capNominal||60}"></div>
       <div>
@@ -780,12 +780,12 @@ function carroFields(id, values={}){
 function placaFields(id, values={}){
   return `<div class="card-dyn">
     <div class="card-title" style="display:flex;align-items:center;gap:8px;"> 
-      <button type="button" class="min-btn" onclick="toggleMinCard('placaGrid${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
+      <button type="button" class="min-btn" onclick="toggleMinCard('placa${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
       <button type="button" class="dup-btn" onclick="duplicarPlaca(${id})" title="Duplicar">⧉</button>
       <button type="button" class="remove-btn" onclick="removerPlaca(${id})" title="Remover">×</button>
       <span style="font-weight:700;">☀️ ${values.nome||'' ? values.nome : 'Placa '+(id+1)}</span>
     </div>
-    <div class="grid" id="placaGrid${id}">
+    <div class="grid" id="placa${id}">
       <div><label>Nome da placa</label><input class="field" id="placaNome${id}" type="text" value="${values.nome||''}" placeholder="Ex: FV1"></div>
       <div>
         <label>Potência do array <span class="unit">kWp</span>
@@ -844,9 +844,9 @@ function placaFields(id, values={}){
     <button type="button" class="dup-btn" onclick="duplicarPlaca(${id})" title="Duplicar">⧉</button>
     <button type="button" class="remove-btn" onclick="removerPlaca(${id})" title="Remover">×</button>
   </div>`;
-// Minimizar/expandir apenas o grid de especificações
-function toggleMinCard(gridId){
-  const el = document.getElementById(gridId);
+// Minimizar/expandir cards de especificações
+function toggleMinCard(cardId){
+  const el = document.getElementById(cardId);
   if(!el) return;
   el.style.display = (el.style.display==='none') ? '' : 'none';
 }
@@ -1639,81 +1639,59 @@ function importarJSON(input){
 
         // Aplicar estado atual se existir obj.current
         if(obj.current && obj.current.carros && obj.current.placas){
-          const existingConfigs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
-          const incomingConfigs = obj.evConfigs || {};
-          let addedC=0, updatedC=0;
-          Object.keys(incomingConfigs).forEach(k=>{ if(!existingConfigs[k]) addedC++; else updatedC++; existingConfigs[k]=incomingConfigs[k]; });
-          localStorage.setItem('evConfigs', JSON.stringify(existingConfigs));
-
-          const existingCarModels = JSON.parse(localStorage.getItem('carModels')||'{}');
-          const incomingCarModels = obj.carModels || {};
-          let addedCar=0, updatedCar=0;
-    Object.keys(incomingCarModels).forEach(k=>{ if(!existingCarModels[k]) addedCar++; else updatedCar++; const m=incomingCarModels[k]; if(m){ if(m.percUtil>1) m.percUtil/=100; if(m.etaGlobal>1) m.etaGlobal/=100; } existingCarModels[k]=m; });
-          localStorage.setItem('carModels', JSON.stringify(existingCarModels));
-
-          const existingPlacaModels = JSON.parse(localStorage.getItem('placaModels')||'{}');
-          const incomingPlacaModels = obj.placaModels || {};
-          let addedPl=0, updatedPl=0;
-    Object.keys(incomingPlacaModels).forEach(k=>{ if(!existingPlacaModels[k]) addedPl++; else updatedPl++; const m=incomingPlacaModels[k]; if(m && m.pr>1) m.pr/=100; existingPlacaModels[k]=m; });
-          localStorage.setItem('placaModels', JSON.stringify(existingPlacaModels));
-
-          if(obj.evLastConfig){ localStorage.setItem('evLastConfig', obj.evLastConfig); }
-
-          // Aplicar estado atual se existir obj.current
-          if(obj.current && obj.current.carros && obj.current.placas){
-            carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1? c.percUtil/100 : c.percUtil, etaGlobal: c.etaGlobal>1? c.etaGlobal/100 : c.etaGlobal }));
-            placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1? p.pr/100 : p.pr, etaArr: p.etaArr>1? p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
-            nextCarroId = carros.length;
-            nextPlacaId = placas.length;
-            renderCarros(true);
-            renderPlacas(true);
-            if(obj.current.meta){
-              const nc = document.getElementById('numChargers');
-              const tf = document.getElementById('taperFactorInput');
-              const tarifa = document.getElementById('tarifaInput');
-              const acm = document.getElementById('autoCalcMode');
-              if(nc && Number(obj.current.meta.numChargers)>0) nc.value = obj.current.meta.numChargers;
-              if(tf && Number(obj.current.meta.taperFactor)>0) tf.value = obj.current.meta.taperFactor;
-              if(tarifa && obj.current.meta.tarifa!=null) tarifa.value = obj.current.meta.tarifa;
-              if(acm && obj.current.meta.autoCalcMode) acm.value = obj.current.meta.autoCalcMode;
-            }
-          }
-          updateSavedConfigs();
-          updateSavedCarModels();
-          updateSavedPlacaModels();
-          calcular();
-          const fb = document.getElementById('configFeedback');
-          if(fb){
-            fb.style.display='block';
-            fb.style.color='var(--ok)';
-            fb.innerHTML = `Bundle importado. Configs +${addedC}/${updatedC} atualiz.; Carros modelo +${addedCar}/${updatedCar}; Placas modelo +${addedPl}/${updatedPl}.`;
-          } else {
-            alert('Bundle importado.');
-          }
-        } else if(obj.carros && obj.placas){
-          // fallback simples (apenas estado atual)
-          carros = obj.carros.map((c,i)=>({...c,id:i}));
-          placas = obj.placas.map((p,i)=>({...p,id:i}));
+          carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1?c.percUtil/100:c.percUtil, etaGlobal: c.etaGlobal>1?c.etaGlobal/100:c.etaGlobal}));
+          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1?p.pr/100:p.pr, etaArr: p.etaArr>1?p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
           nextCarroId = carros.length;
           nextPlacaId = placas.length;
           renderCarros(true);
           renderPlacas(true);
-          if(obj.meta){
+          if(obj.current.meta){
             const nc = document.getElementById('numChargers');
             const tf = document.getElementById('taperFactorInput');
             const tarifa = document.getElementById('tarifaInput');
             const acm = document.getElementById('autoCalcMode');
-            if(nc && Number(obj.meta.numChargers)>0) nc.value = obj.meta.numChargers;
-            if(tf && Number(obj.meta.taperFactor)>0) tf.value = obj.meta.taperFactor;
-            if(tarifa && obj.meta.tarifa!=null) tarifa.value = obj.meta.tarifa;
-            if(acm && obj.meta.autoCalcMode) acm.value = obj.meta.autoCalcMode;
+            if(nc && Number(obj.current.meta.numChargers)>0) nc.value = obj.current.meta.numChargers;
+            if(tf && Number(obj.current.meta.taperFactor)>0) tf.value = obj.current.meta.taperFactor;
+            if(tarifa && obj.current.meta.tarifa!=null) tarifa.value = obj.current.meta.tarifa;
+            if(acm && obj.current.meta.autoCalcMode) acm.value = obj.current.meta.autoCalcMode;
           }
-          calcular();
-          const fb = document.getElementById('configFeedback');
-          if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Config importada.'; }
-        } else {
-          alert('Arquivo inválido.');
         }
+        updateSavedConfigs();
+        updateSavedCarModels();
+        updateSavedPlacaModels();
+        calcular();
+        const fb = document.getElementById('configFeedback');
+        if(fb){
+          fb.style.display='block';
+          fb.style.color='var(--ok)';
+          fb.innerHTML = `Bundle importado. Configs +${addedC}/${updatedC} atualiz.; Carros modelo +${addedCar}/${updatedCar}; Placas modelo +${addedPl}/${updatedPl}.`;
+        } else {
+          alert('Bundle importado.');
+        }
+      } else if(obj.carros && obj.placas){
+        // fallback simples (apenas estado atual)
+        carros = obj.carros.map((c,i)=>({...c,id:i}));
+        placas = obj.placas.map((p,i)=>({...p,id:i}));
+        nextCarroId = carros.length;
+        nextPlacaId = placas.length;
+        renderCarros(true);
+        renderPlacas(true);
+        if(obj.meta){
+          const nc = document.getElementById('numChargers');
+          const tf = document.getElementById('taperFactorInput');
+          const tarifa = document.getElementById('tarifaInput');
+          const acm = document.getElementById('autoCalcMode');
+          if(nc && Number(obj.meta.numChargers)>0) nc.value = obj.meta.numChargers;
+          if(tf && Number(obj.meta.taperFactor)>0) tf.value = obj.meta.taperFactor;
+          if(tarifa && obj.meta.tarifa!=null) tarifa.value = obj.meta.tarifa;
+          if(acm && obj.meta.autoCalcMode) acm.value = obj.meta.autoCalcMode;
+        }
+        calcular();
+        const fb = document.getElementById('configFeedback');
+        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Config importada.'; }
+      } else {
+        alert('Arquivo inválido.');
+      }
     }catch(err){
       alert('Erro ao importar: '+err.message);
     }
