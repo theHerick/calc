@@ -592,6 +592,13 @@ function fmtKWh(x){
   if (!Number.isFinite(x)) return '—';
   return x >= 100 ? x.toFixed(0) + ' kWh' : x.toFixed(2) + ' kWh';
 }
+
+// Minimizar/expandir cards de especificações
+function toggleMinCard(cardId){
+  const el = document.getElementById(cardId);
+  if(!el) return;
+  el.style.display = (el.style.display==='none') ? '' : 'none';
+}
 function fmtKW(x){
   if (!Number.isFinite(x)) return '—';
   return x.toFixed(2) + ' kW';
