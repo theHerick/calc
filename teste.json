@@ -1,0 +1,70 @@
+{
+  "exportVersion": "1.1",
+  "timestamp": "2025-08-15T11:40:00.000Z",
+  "meta": {
+    "numChargers": 10,
+    "taperFactor": 0.55,
+    "tarifa": 0.95,
+    "autoCalcMode": "manual",
+    "version": "1.1"
+  },
+  "current": {
+    "carros": [
+      { "id": 0, "nome": "BYD Dolphin (60.48)",          "capNominal": 60.48, "percUtil": 0.93, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 7.0 },
+      { "id": 1, "nome": "Chevrolet Bolt EV (66)",       "capNominal": 66.00, "percUtil": 0.98, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 7.2 },
+      { "id": 2, "nome": "Nissan Leaf e+ (62)",          "capNominal": 62.00, "percUtil": 0.97, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 6.6 },
+      { "id": 3, "nome": "Volvo EX30 Extended (69)",     "capNominal": 69.00, "percUtil": 0.93, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 11.0 },
+      { "id": 4, "nome": "JAC e-JS1 (30.2)",             "capNominal": 30.20, "percUtil": 0.88, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 6.6 },
+      { "id": 5, "nome": "Tesla Model 3 Long Range (82)", "capNominal": 82.00, "percUtil": 0.96, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 11.0 },
+      { "id": 6, "nome": "BYD Seal AWD (82.5)",          "capNominal": 82.50, "percUtil": 0.94, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 11.0 },
+      { "id": 7, "nome": "BMW i3 (42.2)",                "capNominal": 42.20, "percUtil": 0.94, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 11.0 },
+      { "id": 8, "nome": "Renault Kwid E-Tech (26.8)",   "capNominal": 26.80, "percUtil": 0.90, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 7.4 },
+      { "id": 9, "nome": "GWM ORA 03 (63)",              "capNominal": 63.00, "percUtil": 0.95, "socIni": 20, "socFim": 100, "etaGlobal": 0.85, "onboardKW": 11.0 }
+    ],
+    "placas": [
+      { "id": 0, "nome": "Array 01 (550W x 40)", "kWp": 22.00,  "pr": 0.76, "etaArr": 1, "psh": 5, "obs": "40 módulos 550 Wp" },
+      { "id": 1, "nome": "Array 02 (550W x 30)", "kWp": 16.50,  "pr": 0.75, "etaArr": 1, "psh": 5, "obs": "30 módulos 550 Wp" },
+      { "id": 2, "nome": "Array 03 (550W x 36)", "kWp": 19.80,  "pr": 0.74, "etaArr": 1, "psh": 5, "obs": "36 módulos 550 Wp" },
+      { "id": 3, "nome": "Array 04 (550W x 28)", "kWp": 15.40,  "pr": 0.75, "etaArr": 1, "psh": 5, "obs": "28 módulos 550 Wp" },
+      { "id": 4, "nome": "Array 05 (550W x 32)", "kWp": 17.60,  "pr": 0.76, "etaArr": 1, "psh": 5, "obs": "32 módulos 550 Wp" },
+      { "id": 5, "nome": "Array 06 (550W x 24)", "kWp": 13.20,  "pr": 0.73, "etaArr": 1, "psh": 5, "obs": "24 módulos 550 Wp" },
+      { "id": 6, "nome": "Array 07 (550W x 20)", "kWp": 11.00,  "pr": 0.75, "etaArr": 1, "psh": 5, "obs": "20 módulos 550 Wp" },
+      { "id": 7, "nome": "Array 08 (550W x 18)", "kWp": 9.90,   "pr": 0.74, "etaArr": 1, "psh": 5, "obs": "18 módulos 550 Wp" },
+      { "id": 8, "nome": "Array 09 (550W x 25)", "kWp": 13.75,  "pr": 0.75, "etaArr": 1, "psh": 5, "obs": "25 módulos 550 Wp" },
+      { "id": 9, "nome": "Array 10 (550W x 35)", "kWp": 19.25,  "pr": 0.77, "etaArr": 1, "psh": 5, "obs": "35 módulos 550 Wp" }
+    ],
+    "meta": {
+      "numChargers": 10,
+      "taperFactor": 0.55,
+      "tarifa": 0.95,
+      "autoCalcMode": "manual",
+      "version": "1.1"
+    }
+  },
+  "evConfigs": {},
+  "carModels": {
+    "BYD Dolphin (60.48)":        { "capNominal": 60.48, "capUtilAprox": 56.25, "onboardKW": 7.0 },
+    "Chevrolet Bolt EV (66)":     { "capNominal": 66.00, "capUtilAprox": 64.68, "onboardKW": 7.2 },
+    "Nissan Leaf e+ (62)":        { "capNominal": 62.00, "capUtilAprox": 60.14, "onboardKW": 6.6 },
+    "Volvo EX30 Extended (69)":   { "capNominal": 69.00, "capUtilAprox": 64.17, "onboardKW": 11.0 },
+    "JAC e-JS1 (30.2)":           { "capNominal": 30.20, "capUtilAprox": 26.58, "onboardKW": 6.6 },
+    "Tesla Model 3 Long Range (82)": { "capNominal": 82.00, "capUtilAprox": 78.72, "onboardKW": 11.0 },
+    "BYD Seal AWD (82.5)":        { "capNominal": 82.50, "capUtilAprox": 77.55, "onboardKW": 11.0 },
+    "BMW i3 (42.2)":              { "capNominal": 42.20, "capUtilAprox": 39.67, "onboardKW": 11.0 },
+    "Renault Kwid E-Tech (26.8)": { "capNominal": 26.80, "capUtilAprox": 24.12, "onboardKW": 7.4 },
+    "GWM ORA 03 (63)":            { "capNominal": 63.00, "capUtilAprox": 59.85, "onboardKW": 11.0 }
+  },
+  "placaModels": {
+    "Array 01 (550W x 40)": { "modulePowerW": 550, "numMod": 40, "kWp": 22.00, "PR": 0.76, "E_dia_kWh": 83.60 },
+    "Array 02 (550W x 30)": { "modulePowerW": 550, "numMod": 30, "kWp": 16.50, "PR": 0.75, "E_dia_kWh": 61.88 },
+    "Array 03 (550W x 36)": { "modulePowerW": 550, "numMod": 36, "kWp": 19.80, "PR": 0.74, "E_dia_kWh": 73.26 },
+    "Array 04 (550W x 28)": { "modulePowerW": 550, "numMod": 28, "kWp": 15.40, "PR": 0.75, "E_dia_kWh": 57.75 },
+    "Array 05 (550W x 32)": { "modulePowerW": 550, "numMod": 32, "kWp": 17.60, "PR": 0.76, "E_dia_kWh": 66.88 },
+    "Array 06 (550W x 24)": { "modulePowerW": 550, "numMod": 24, "kWp": 13.20, "PR": 0.73, "E_dia_kWh": 48.18 },
+    "Array 07 (550W x 20)": { "modulePowerW": 550, "numMod": 20, "kWp": 11.00, "PR": 0.75, "E_dia_kWh": 41.25 },
+    "Array 08 (550W x 18)": { "modulePowerW": 550, "numMod": 18, "kWp": 9.90,  "PR": 0.74, "E_dia_kWh": 36.63 },
+    "Array 09 (550W x 25)": { "modulePowerW": 550, "numMod": 25, "kWp": 13.75, "PR": 0.75, "E_dia_kWh": 51.56 },
+    "Array 10 (550W x 35)": { "modulePowerW": 550, "numMod": 35, "kWp": 19.25, "PR": 0.77, "E_dia_kWh": 74.01 }
+  },
+  "evLastConfig": "GWM ORA 03 (63)"
+}
