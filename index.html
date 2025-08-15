@@ -694,7 +694,7 @@ function carroFields(id, values={}){
         <label>Capacidade utilizável <span class="unit">%</span>
           <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="toggleUtilHelper(${id})" title="Calcular a % a partir de kWh">&#x3f;</span>
         </label>
-        <input class="field" id="percUtil${id}" type="number" min="50" max="100" step="1" value="${values.percUtil||95}">
+  <input class="field" id="percUtil${id}" type="number" min="50" max="100" step="1" value="${values.percUtil!=null?Math.round(values.percUtil*100):95}">
         <div id="utilHelper${id}" style="display:none;margin-top:8px;background:rgba(124,207,255,0.08);padding:10px 12px;border-radius:10px;">
           <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
             <b>% Utilizável = Cap_utilizável / Cap_nominal × 100</b><br>
@@ -714,7 +714,7 @@ function carroFields(id, values={}){
         <label>Eficiência global FV→bateria <span class="unit">%</span>
           <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="toggleEtaHelper(${id})" title="Calcular / entender eficiência">&#x3f;</span>
         </label>
-        <input class="field" id="etaGlobal${id}" type="number" min="60" max="99" step="1" value="${values.etaGlobal||85}">
+  <input class="field" id="etaGlobal${id}" type="number" min="60" max="99" step="1" value="${values.etaGlobal!=null?Math.round(values.etaGlobal*100):85}">
         <div id="etaHelper${id}" style="display:none;margin-top:8px;background:rgba(124,207,255,0.08);padding:10px 12px;border-radius:10px;">
           <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
             <b>Eficiência (%) = E_armazenada / E_saida_inversor × 100</b><br>
@@ -768,7 +768,7 @@ function placaFields(id, values={}){
         <label>Performance Ratio (PR) <span class="unit">%</span>
           <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" onclick="togglePRHelper(${id})" title="Calcular / entender PR">&#x3f;</span>
         </label>
-        <input class="field" id="pr${id}" type="number" min="50" max="95" step="1" value="${values.pr||75}">
+  <input class="field" id="pr${id}" type="number" min="50" max="95" step="1" value="${values.pr!=null?Math.round(values.pr*100):75}">
         <div id="prHelper${id}" style="display:none;margin-top:8px;background:rgba(161,140,255,0.10);padding:10px 12px;border-radius:10px;">
           <div style="font-size:12px;line-height:1.3;margin-bottom:6px;color:var(--muted);">
             <b>PR = E_real / (P_instalada × H_ref) × 100</b><br>
@@ -885,8 +885,8 @@ function calcularParray(id){
   }
 }
 
-let carros = [{id:0}];
-let placas = [{id:0}];
+let carros = [{id:0, percUtil:0.95, etaGlobal:0.85}];
+let placas = [{id:0, pr:0.75}];
 let nextCarroId = 1;
 let nextPlacaId = 1;
 
@@ -897,10 +897,10 @@ function renderCarros(skipHarvest=false){
       ...c,
       nome: document.getElementById('carroNome'+c.id)?.value || c.nome || '',
       capNominal: num(document.getElementById('capNominal'+c.id)?.value, c.capNominal||60),
-      percUtil: num(document.getElementById('percUtil'+c.id)?.value, c.percUtil||95),
+  percUtil: (function(v,prev){ v=num(v, prev!=null?prev*100:95); return clamp(v,0,100)/100; })(document.getElementById('percUtil'+c.id)?.value, c.percUtil),
       socIni: num(document.getElementById('socIni'+c.id)?.value, c.socIni||20),
       socFim: num(document.getElementById('socFim'+c.id)?.value, c.socFim||100),
-      etaGlobal: num(document.getElementById('etaGlobal'+c.id)?.value, c.etaGlobal||85),
+  etaGlobal: (function(v,prev){ v=num(v, prev!=null?prev*100:85); return clamp(v,1,100)/100; })(document.getElementById('etaGlobal'+c.id)?.value, c.etaGlobal),
       onboardKW: num(document.getElementById('onboardKW'+c.id)?.value, c.onboardKW||7.4)
     }));
   }
@@ -914,7 +914,7 @@ function renderPlacas(skipHarvest=false){
       ...p,
       nome: document.getElementById('placaNome'+p.id)?.value || p.nome || '',
       kWp: num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0),
-      pr: num(document.getElementById('pr'+p.id)?.value, p.pr||75),
+  pr: (function(v,prev){ v=num(v, prev!=null?prev*100:75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value, p.pr),
       psh: num(document.getElementById('psh'+p.id)?.value, p.psh||5),
       obs: document.getElementById('obs'+p.id)?.value || p.obs || ''
     }));
@@ -972,10 +972,10 @@ function getConfigFromFields(){
     id: c.id,
     nome: document.getElementById('carroNome'+c.id)?.value||'',
     capNominal: num(document.getElementById('capNominal'+c.id)?.value, 60),
-    percUtil: num(document.getElementById('percUtil'+c.id)?.value, 95),
+  percUtil: (function(v){ v=num(v,95); return clamp(v,0,100)/100; })(document.getElementById('percUtil'+c.id)?.value),
     socIni: num(document.getElementById('socIni'+c.id)?.value, 20),
     socFim: num(document.getElementById('socFim'+c.id)?.value, 100),
-    etaGlobal: num(document.getElementById('etaGlobal'+c.id)?.value, 85),
+  etaGlobal: (function(v){ v=num(v,85); return clamp(v,1,100)/100; })(document.getElementById('etaGlobal'+c.id)?.value),
     onboardKW: num(document.getElementById('onboardKW'+c.id)?.value, 7.4)
   }));
   // Placas
@@ -983,7 +983,7 @@ function getConfigFromFields(){
     id: p.id,
     nome: document.getElementById('placaNome'+p.id)?.value||'',
     kWp: num(document.getElementById('kWp'+p.id)?.value, 2.0),
-    pr: num(document.getElementById('pr'+p.id)?.value, 75),
+  pr: (function(v){ v=num(v,75); return clamp(v,0.01,100)/100; })(document.getElementById('pr'+p.id)?.value),
     psh: num(document.getElementById('psh'+p.id)?.value, 5),
     obs: document.getElementById('obs'+p.id)?.value||''
   }));
@@ -1044,8 +1044,17 @@ function loadConfig(){
   let configs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
   const conf = configs[nome];
   if(!conf) return;
-  carros = conf.carros.map((c,i)=>({...c,id:i}));
-  placas = conf.placas.map((p,i)=>({...p,id:i}));
+  carros = conf.carros.map((c,i)=>({
+    ...c,
+    id:i,
+    percUtil: c.percUtil>1? c.percUtil/100 : c.percUtil,
+    etaGlobal: c.etaGlobal>1? c.etaGlobal/100 : c.etaGlobal
+  }));
+  placas = conf.placas.map((p,i)=>({
+    ...p,
+    id:i,
+    pr: p.pr>1? p.pr/100 : p.pr
+  }));
   nextCarroId = carros.length;
   nextPlacaId = placas.length;
   renderCarros(true);
@@ -1087,10 +1096,10 @@ function getCarModelFromFields(id){
   return {
     nome: document.getElementById('carroNome'+id)?.value||'',
     capNominal: num(document.getElementById('capNominal'+id)?.value, 60),
-    percUtil: num(document.getElementById('percUtil'+id)?.value, 95),
+  percUtil: (function(v){ v=num(document.getElementById('percUtil'+id)?.value,95); return v>1? v/100 : v; })(),
     socIni: num(document.getElementById('socIni'+id)?.value, 20),
     socFim: num(document.getElementById('socFim'+id)?.value, 100),
-    etaGlobal: num(document.getElementById('etaGlobal'+id)?.value, 85),
+  etaGlobal: (function(v){ v=num(document.getElementById('etaGlobal'+id)?.value,85); return v>1? v/100 : v; })(),
     onboardKW: num(document.getElementById('onboardKW'+id)?.value, 7.4)
   };
 }
@@ -1133,10 +1142,10 @@ function loadCarModel(){
   if(!model) return;
   document.getElementById('carroNome'+carId).value = model.nome;
   document.getElementById('capNominal'+carId).value = model.capNominal;
-  document.getElementById('percUtil'+carId).value = model.percUtil;
+  document.getElementById('percUtil'+carId).value = (model.percUtil<=1?Math.round(model.percUtil*100):model.percUtil);
   document.getElementById('socIni'+carId).value = model.socIni;
   document.getElementById('socFim'+carId).value = model.socFim;
-  document.getElementById('etaGlobal'+carId).value = model.etaGlobal;
+  document.getElementById('etaGlobal'+carId).value = (model.etaGlobal<=1?Math.round(model.etaGlobal*100):model.etaGlobal);
   document.getElementById('onboardKW'+carId).value = model.onboardKW;
   alert('Modelo aplicado!');
 }
@@ -1146,7 +1155,7 @@ function getPlacaModelFromFields(id){
   return {
     nome: document.getElementById('placaNome'+id)?.value||'',
     kWp: num(document.getElementById('kWp'+id)?.value, 2.0),
-    pr: num(document.getElementById('pr'+id)?.value, 75),
+  pr: (function(v){ v=num(document.getElementById('pr'+id)?.value,75); return v>1? v/100 : v; })(),
     psh: num(document.getElementById('psh'+id)?.value, 5),
     obs: document.getElementById('obs'+id)?.value||''
   };
@@ -1189,7 +1198,7 @@ function loadPlacaModel(){
   if(!model) return;
   document.getElementById('placaNome'+placaId).value = model.nome;
   document.getElementById('kWp'+placaId).value = model.kWp;
-  document.getElementById('pr'+placaId).value = model.pr;
+  document.getElementById('pr'+placaId).value = (model.pr<=1?Math.round(model.pr*100):model.pr);
   document.getElementById('psh'+placaId).value = model.psh;
   document.getElementById('obs'+placaId).value = model.obs;
   alert('Modelo aplicado!');
@@ -1210,11 +1219,18 @@ function calcular(){
   let perCarRows = [];
   let seqSumHoras = 0; // soma sequencial de tempos limitados
   carros.forEach(c => {
-    const capNominal = num(document.getElementById('capNominal'+c.id)?.value, 60);
-    const percUtil   = clamp(num(document.getElementById('percUtil'+c.id)?.value, 95), 0, 100) / 100.0;
-    const socIni     = clamp(num(document.getElementById('socIni'+c.id)?.value, 20), 0, 100) / 100.0;
-    const socFim     = clamp(num(document.getElementById('socFim'+c.id)?.value, 100), 0, 100) / 100.0;
-    const etaGlobal  = clamp(num(document.getElementById('etaGlobal'+c.id)?.value, 85), 1, 100) / 100.0;
+      const capNominal = num(document.getElementById('capNominal'+c.id)?.value, c.capNominal||60);
+      // percUtil e etaGlobal armazenados internamente em fração; se o usuário editou campo, convertemos naquele momento no renderCarros(); então aqui podemos tentar ler diretamente do array c, fallback DOM -> fração
+      const percUtil = (function(){
+        const domVal = document.getElementById('percUtil'+c.id)?.value;
+        if(domVal!=null && domVal!=='') return clamp(num(domVal, c.percUtil*100),0,100)/100; return c.percUtil||0.95;
+      })();
+      const socIni = clamp(num(document.getElementById('socIni'+c.id)?.value, c.socIni||20),0,100)/100;
+      const socFim = clamp(num(document.getElementById('socFim'+c.id)?.value, c.socFim||100),0,100)/100;
+      const etaGlobal = (function(){
+        const domVal = document.getElementById('etaGlobal'+c.id)?.value;
+        if(domVal!=null && domVal!=='') return clamp(num(domVal, (c.etaGlobal||0.85)*100),1,100)/100; return c.etaGlobal||0.85;
+      })();
     const onboardKW  = Math.max(0, num(document.getElementById('onboardKW'+c.id)?.value, 7.4));
     nomesCarros.push(document.getElementById('carroNome'+c.id)?.value||'Carro '+(c.id+1));
     if (socFim <= socIni) alerts.push(`O SOC final do carro ${nomesCarros[nomesCarros.length-1]} deve ser maior que o SOC inicial.`);
@@ -1239,28 +1255,21 @@ function calcular(){
   let nomesPlacas = [];
   let pr_weighted_sum = 0; let psh_weighted_sum = 0; let weight_sum = 0;
   placas.forEach(p => {
-    const kWp = Math.max(0, num(document.getElementById('kWp'+p.id)?.value, 2.0));
-    // PR flexível: aceita entrada como percentual (ex: 78) ou decimal (ex: 0.78)
-    let prInput = num(document.getElementById('pr'+p.id)?.value, 75);
-    let prIsDecimal = false;
-    if(prInput <= 1){
-      // Interpretar como decimal direto (0-1)
-      prIsDecimal = true;
-    } else {
-      // Interpretar como percentual 0-100
-      prInput = clamp(prInput, 0.01, 100) / 100.0;
-    }
-    const pr = prIsDecimal ? clamp(prInput,0.001,1) : prInput; // pr agora sempre fração 0-1
-    const psh = Math.max(0, num(document.getElementById('psh'+p.id)?.value, 5));
+      const kWp = Math.max(0, num(document.getElementById('kWp'+p.id)?.value, p.kWp||2.0));
+      // PR já armazenado como fração; converter DOM somente se alterado (DOM em %) -> fração
+      const pr = (function(){
+        const domVal = document.getElementById('pr'+p.id)?.value;
+        if(domVal!=null && domVal!=='') return clamp(num(domVal, (p.pr||0.75)*100),0.01,100)/100; return p.pr||0.75;
+      })();
+      const psh = Math.max(0, num(document.getElementById('psh'+p.id)?.value, p.psh||5));
     nomesPlacas.push(document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1));
     if (kWp <= 0) alerts.push(`Defina a potência do array (kWp) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
     if (psh <= 0) alerts.push(`Defina as horas de sol pleno (PSH) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
-    if(prIsDecimal) alerts.push(`PR da ${nomesPlacas[nomesPlacas.length-1]} interpretado como decimal (${pr.toFixed(2)}). Se pretendia ${ (pr*100).toFixed(1) }% está correto.`);
     kWp_total += kWp;
     pr_weighted_sum += pr * kWp; // pr já em fração
     psh_weighted_sum += psh * kWp;
     weight_sum += kWp;
-  if(debug) console.log('[PLACA]', nomesPlacas[nomesPlacas.length-1], {kWp, prFraction: pr, prPercent:(pr*100), psh, prIsDecimal});
+    if(debug) console.log('[PLACA]', nomesPlacas[nomesPlacas.length-1], {kWp, prFraction: pr, prPercent:(pr*100), psh});
   });
   if(weight_sum>0){
     pr_total = pr_weighted_sum / weight_sum;
@@ -1511,21 +1520,21 @@ function importarJSON(input){
         const existingCarModels = JSON.parse(localStorage.getItem('carModels')||'{}');
         const incomingCarModels = obj.carModels || {};
         let addedCar=0, updatedCar=0;
-        Object.keys(incomingCarModels).forEach(k=>{ if(!existingCarModels[k]) addedCar++; else updatedCar++; existingCarModels[k]=incomingCarModels[k]; });
+  Object.keys(incomingCarModels).forEach(k=>{ if(!existingCarModels[k]) addedCar++; else updatedCar++; const m=incomingCarModels[k]; if(m){ if(m.percUtil>1) m.percUtil/=100; if(m.etaGlobal>1) m.etaGlobal/=100; } existingCarModels[k]=m; });
         localStorage.setItem('carModels', JSON.stringify(existingCarModels));
 
         const existingPlacaModels = JSON.parse(localStorage.getItem('placaModels')||'{}');
         const incomingPlacaModels = obj.placaModels || {};
         let addedPl=0, updatedPl=0;
-        Object.keys(incomingPlacaModels).forEach(k=>{ if(!existingPlacaModels[k]) addedPl++; else updatedPl++; existingPlacaModels[k]=incomingPlacaModels[k]; });
+  Object.keys(incomingPlacaModels).forEach(k=>{ if(!existingPlacaModels[k]) addedPl++; else updatedPl++; const m=incomingPlacaModels[k]; if(m && m.pr>1) m.pr/=100; existingPlacaModels[k]=m; });
         localStorage.setItem('placaModels', JSON.stringify(existingPlacaModels));
 
         if(obj.evLastConfig){ localStorage.setItem('evLastConfig', obj.evLastConfig); }
 
         // Aplicar estado atual se existir obj.current
         if(obj.current && obj.current.carros && obj.current.placas){
-          carros = obj.current.carros.map((c,i)=>({...c,id:i}));
-          placas = obj.current.placas.map((p,i)=>({...p,id:i}));
+          carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1?c.percUtil/100:c.percUtil, etaGlobal: c.etaGlobal>1?c.etaGlobal/100:c.etaGlobal}));
+          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1?p.pr/100:p.pr}));
           nextCarroId = carros.length;
           nextPlacaId = placas.length;
           renderCarros(true);
