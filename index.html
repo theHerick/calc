@@ -358,13 +358,42 @@
       </div>
       <details style="margin-top:12px">
         <summary>Como calculamos?</summary>
-        <div class="hint">
-          <p><b>Energia na bateria</b>: E_bat = Cap_utilizável_kWh × (SOC_final − SOC_inicial)</p>
-          <p><b>Energia FV necessária</b>: E_PV = E_bat / η_global</p>
-          <p><b>Geração diária</b>: E_dia = kWp × PSH × PR</p>
-          <p><b>Dias necessários</b>: Dias = E_PV / E_dia</p>
-          <p><b>Horas de sol pleno</b>: Horas = E_PV / (kWp × PR)</p>
-          <p><b>Limite teórico por potência</b>: t_mín ≈ E_bat / min(onboard_kW, kWp × PR)</p>
+        <div class="hint" style="font-size:11.5px;line-height:1.45;">
+          <p><b>1. Energia útil na bateria (ΔSOC)</b><br>
+            E_bat = Cap_nominal × %Utilizável × (SOC_final − SOC_inicial)<br>
+            Onde %Utilizável = Cap_utilizável / Cap_nominal.</p>
+          <p><b>2. Energia FV bruta necessária</b><br>
+            E_PV = E_bat / η_global_carro<br>
+            (η_global_carro = cadeia FV/DC→AC→carregador→bateria para cada carro).</p>
+          <p><b>3. Geração diária de cada array</b><br>
+            Para cada array i: E_dia_i = kWp_i × PSH_i × PR_i × η_array_i<br>
+            (PR_i contempla perdas gerais: temperatura, mismatch, sujeira, conversão principal).<br>
+            (η_array_i opcional adiciona perdas específicas não já contidas no PR; se não usar deixe 100%).</p>
+          <p><b>4. Agregação dos arrays</b><br>
+            kWp_total = Σ kWp_i<br>
+            Fator_efetivo (PR×η)_pond = Σ(PR_i × η_array_i × kWp_i) / Σ kWp_i<br>
+            PSH_pond = Σ(PSH_i × kWp_i)/Σ kWp_i<br>
+            E_dia_total = kWp_total × PSH_pond × (PR×η)_pond</p>
+          <p><b>5. Dias e horas equivalentes</b><br>
+            Dias = E_PV_total / E_dia_total<br>
+            Horas_equiv_sol = E_PV_total / (kWp_total × (PR×η)_pond)</p>
+          <p><b>6. Potência efetiva e limite teórico</b><br>
+            P_FV_efetiva ≈ kWp_total × (PR×η)_pond<br>
+            P_lim = min( Σ P_onboard , P_FV_efetiva )<br>
+            t_min ≈ E_bat_total / P_lim (ignora taper & variação solar).</p>
+          <p><b>7. Saldo diário</b><br>
+            Saldo = E_dia_total − E_PV_total (positivo = excedente, negativo = déficit).</p>
+          <p style="margin-top:10px;"><b>Unidades & Cuidados</b><br>
+            • Potências de módulo em W convertidas para kW: (N_módulos × P_mod_W)/1000 = kWp.<br>
+            • PR e eficiências internos em fração (0–1); exibidos em %.<br>
+            • Não duplique perdas: se PR já inclui tudo, mantenha η_array = 100%.</p>
+          <p style="margin-top:10px;"><b>Fontes / Referências resumidas</b><br>
+            1. Conceito de PR: IEC 61724 / literatura fotovoltaica (E_real / (P_instalada × H_ref)).<br>
+            2. Uso de PSH: prática de dimensionamento solar (horas equivalentes de pico).<br>
+            3. Cadeia de eficiência de carregamento EV: perdas em inversor, retificação, BMS (white papers fabricantes & medições de campo).<br>
+            4. Conversão W → kW e energia: base SI (E = P × t).<br>
+            5. Abordagem de taper 80–100% SOC: comportamento típico de BMS Li-ion (curvas de carga CC/CV publicadas por OEMs).</p>
+          <p style="margin-top:6px;">(Resumo didático: ver IEC 61724 para PR; guias de dimensionamento FV comerciais para PSH e perdas; documentação técnica de fabricantes EV/inversores para eficiências.)</p>
         </div>
       </details>
     </div>
