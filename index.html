@@ -826,7 +826,7 @@ function placaFields(id, values={}){
       </div>
       <div>
         <label>Eficiência adicional (η array) <span class="unit">%</span>
-          <span style="cursor:pointer;color:var(--accent);font-size:16px;margin-left:6px;" title="Perdas extras específicas deste array não incluídas no PR (cabos extras, otimizadores, micro inversores). Se já tudo incluso no PR mantenha 100%.">🤔</span>
+          <span class="info-icon" onclick="showHelp(event,'Eficiência adicional','Este campo representa perdas extras específicas do array que não estão incluídas no PR, como cabos longos, otimizadores ou microinversores. Se todas as perdas já estão no PR, mantenha 100%.')">i</span>
         </label>
         <input class="field" id="etaArr${id}" type="number" min="70" max="100" step="1" value="${values.etaArr!=null?Math.round(values.etaArr*100):100}">
       </div>
