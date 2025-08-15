@@ -1171,24 +1171,24 @@ function loadCarModel(){
 
 // Salvar/Carregar modelos de placa
 function getPlacaModelFromFields(id){
-  return {
-    nome: document.getElementById('placaNome'+id)?.value||'',
-    kWp: num(document.getElementById('kWp'+id)?.value, 2.0),
-  pr: (function(v){ v=num(document.getElementById('pr'+id)?.value,75); return v>1? v/100 : v; })(),
-    psh: num(document.getElementById('psh'+id)?.value, 5),
-    obs: document.getElementById('obs'+id)?.value||''
-  };
+  const nome = document.getElementById('placaNome'+id)?.value || 'Array '+(id+1);
+  const kWp = num(document.getElementById('kWp'+id)?.value, 2.0);
+  const pr = clamp(num(document.getElementById('pr'+id)?.value, 75),0.01,100)/100;
+  const etaArr = clamp(num(document.getElementById('etaArr'+id)?.value, 100),1,100)/100;
+  const psh = num(document.getElementById('psh'+id)?.value, 5);
+  const obs = document.getElementById('obsPlaca'+id)?.value || '';
+  return {nome, kWp, pr, etaArr, psh, obs};
 }
-function savePlacaModel(){
+function savePlacaModel(id){
   if(placas.length===0) return;
   const targetSelect = document.getElementById('placaSelect');
-  const id = Number(targetSelect?.value ?? placas[0].id);
+  const idPlaca = Number(targetSelect?.value ?? placas[0].id);
   const nomeInput = document.getElementById('placaModelNameInput');
   const nome = nomeInput?.value?.trim();
   const feedback = document.getElementById('placaModelFeedback');
   if(!nome){ alert('Defina um nome para o modelo de placa.'); return; }
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
-  models[nome] = getPlacaModelFromFields(id);
+  models[nome] = getPlacaModelFromFields(idPlaca);
   localStorage.setItem('placaModels', JSON.stringify(models));
   updateSavedPlacaModels();
   if(feedback){ feedback.style.display='block'; feedback.style.color='var(--ok)'; feedback.textContent='Modelo salvo.'; }
@@ -1206,21 +1206,25 @@ function updateSavedPlacaModels(){
   if(placaSelectApply) placaSelectApply.innerHTML = options;
 }
 function loadPlacaModel(){
-  const savedSel = document.getElementById('savedPlacaModels');
-  const applySel = document.getElementById('placaSelectApply');
-  if(!savedSel || !applySel) return;
-  const nome = savedSel.value;
-  const placaId = Number(applySel.value);
-  if(!nome || isNaN(placaId)) return;
+  const select = document.getElementById('savedPlacaModels');
+  const nome = select.value; if(!nome) return;
   let models = JSON.parse(localStorage.getItem('placaModels')||'{}');
-  const model = models[nome];
-  if(!model) return;
-  document.getElementById('placaNome'+placaId).value = model.nome;
-  document.getElementById('kWp'+placaId).value = model.kWp;
-  document.getElementById('pr'+placaId).value = (model.pr<=1?Math.round(model.pr*100):model.pr);
-  document.getElementById('psh'+placaId).value = model.psh;
-  document.getElementById('obs'+placaId).value = model.obs;
-  alert('Modelo aplicado!');
+  const model = models[nome]; if(!model) return;
+  // Preencher campos
+  const nomeInput = document.getElementById('placaNome'+id);
+  const kWpInput = document.getElementById('kWp'+id);
+  const prInput = document.getElementById('pr'+id);
+  const etaArrInput = document.getElementById('etaArr'+id);
+  const pshInput = document.getElementById('psh'+id);
+  const obsInput = document.getElementById('obsPlaca'+id);
+  if(nomeInput) nomeInput.value = model.nome || '';
+  if(kWpInput) kWpInput.value = model.kWp || '';
+  if(prInput) prInput.value = (model.pr > 1 ? model.pr : (model.pr||0.75)*100).toFixed(2);
+  if(etaArrInput) etaArrInput.value = (model.etaArr > 1 ? model.etaArr : (model.etaArr || 1) * 100).toFixed(2);
+  if(pshInput) pshInput.value = model.psh || '';
+  if(obsInput) obsInput.value = model.obs || '';
+  const feedback = document.getElementById('placaFeedback'+id);
+  if(feedback){ feedback.style.display='block'; feedback.style.color='var(--ok)'; feedback.textContent='Modelo carregado.'; }
 }
 
 // Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
@@ -1565,7 +1569,7 @@ function importarJSON(input){
         // Aplicar estado atual se existir obj.current
         if(obj.current && obj.current.carros && obj.current.placas){
           carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1?c.percUtil/100:c.percUtil, etaGlobal: c.etaGlobal>1?c.etaGlobal/100:c.etaGlobal}));
-          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1?p.pr/100:p.pr}));
+          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1?p.pr/100:p.pr, etaArr: p.etaArr>1?p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
           nextCarroId = carros.length;
           nextPlacaId = placas.length;
           renderCarros(true);
@@ -1716,6 +1720,3 @@ if(lastCfg){
   },150);
 }
 showToast('Pronto para usar.','ok',2600);
-</script>
-</body>
-</html>
