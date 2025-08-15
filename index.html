@@ -346,6 +346,12 @@
         <button class="secondary" type="button" onclick="document.getElementById('importFile').click()">Importar JSON</button>
         <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importarJSON(this)">
       </div>
+      <div style="margin:10px 2px 4px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; font-size:11px; color:var(--muted);">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="debugMode" style="accent-color:var(--accent); width:16px; height:16px;"> Modo debug (logs no console)
+        </label>
+        <span style="opacity:.8;">Use para comparar com cálculo manual. Desmarque para silenciar.</span>
+      </div>
       <!-- Botão único para abrir modal de salvar/modelos -->
       <div style="margin-top:18px; display:flex; justify-content:flex-end;">
         <button id="openSaveModalBtn" type="button" style="min-width:140px;">💾 Salvar / Modelos</button>
@@ -1192,6 +1198,8 @@ function loadPlacaModel(){
 // Cálculo para múltiplos carros/placas (ainda exibe só do primeiro)
 
 function calcular(){
+  const debug = document.getElementById('debugMode')?.checked;
+  if(debug) console.groupCollapsed('%c[CÁLCULO] Início','color:#7ccfff');
   // Somar energia de todos os carros
   let E_bat_total = 0;
   let E_pv_total = 0;
@@ -1217,6 +1225,7 @@ function calcular(){
     E_bat_total += E_bat;
     E_pv_total += E_pv;
     onboardKW_total += onboardKW;
+  if(debug) console.log('[CARRO]', nomesCarros[nomesCarros.length-1], {capNominal, percUtil, socIni, socFim, deltaSOC, capUtil_kWh, E_bat, etaGlobal, E_pv, onboardKW});
     if (etaGlobal < etaGlobal_min) etaGlobal_min = etaGlobal;
     if (etaGlobal < 0.75) alerts.push(`Eficiência global baixa no carro ${nomesCarros[nomesCarros.length-1]}`);
     // Armazena temporariamente – tempos dependem de totais FV (calculados depois)
@@ -1251,6 +1260,7 @@ function calcular(){
     pr_weighted_sum += pr * kWp; // pr já em fração
     psh_weighted_sum += psh * kWp;
     weight_sum += kWp;
+  if(debug) console.log('[PLACA]', nomesPlacas[nomesPlacas.length-1], {kWp, prFraction: pr, prPercent:(pr*100), psh, prIsDecimal});
   });
   if(weight_sum>0){
     pr_total = pr_weighted_sum / weight_sum;
@@ -1266,6 +1276,7 @@ function calcular(){
   const t_min = (P_lim > 0) ? (E_bat_total / P_lim) : Infinity;
   // Saldo diário FV vs demanda
   const saldo = E_dia - E_pv_total; // positivo excedente, negativo déficit
+  if(debug) console.log('[TOTAIS]', {kWp_total, pr_total_fraction: pr_total, pr_total_percent: pr_total*100, psh_total, E_dia, E_bat_total, E_pv_total, saldo, dias, horasSol, P_pico_FV, P_lim, t_min});
   const tarifa = num(document.getElementById('tarifaInput')?.value,0.95);
   const kpiDef = document.getElementById('kpiDeficit');
   const defNote = document.getElementById('deficitNote');
@@ -1410,6 +1421,7 @@ function calcular(){
       `Eficiência efetiva agregada (E_bat/E_PV): <b>${(effOverall*100).toFixed(2)}%</b><br>`+
       `Saldo: <b>${saldo>=0?'+':''}${saldo.toFixed(2)} kWh</b>`;
   }
+  if(debug) console.groupEnd();
 }
 
 function limpar(){
