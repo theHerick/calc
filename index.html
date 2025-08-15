@@ -1231,13 +1231,24 @@ function calcular(){
   let pr_weighted_sum = 0; let psh_weighted_sum = 0; let weight_sum = 0;
   placas.forEach(p => {
     const kWp = Math.max(0, num(document.getElementById('kWp'+p.id)?.value, 2.0));
-    const pr  = clamp(num(document.getElementById('pr'+p.id)?.value, 75), 1, 100) / 100.0;
+    // PR flexível: aceita entrada como percentual (ex: 78) ou decimal (ex: 0.78)
+    let prInput = num(document.getElementById('pr'+p.id)?.value, 75);
+    let prIsDecimal = false;
+    if(prInput <= 1){
+      // Interpretar como decimal direto (0-1)
+      prIsDecimal = true;
+    } else {
+      // Interpretar como percentual 0-100
+      prInput = clamp(prInput, 0.01, 100) / 100.0;
+    }
+    const pr = prIsDecimal ? clamp(prInput,0.001,1) : prInput; // pr agora sempre fração 0-1
     const psh = Math.max(0, num(document.getElementById('psh'+p.id)?.value, 5));
     nomesPlacas.push(document.getElementById('placaNome'+p.id)?.value||'Placa '+(p.id+1));
     if (kWp <= 0) alerts.push(`Defina a potência do array (kWp) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
     if (psh <= 0) alerts.push(`Defina as horas de sol pleno (PSH) > 0 para ${nomesPlacas[nomesPlacas.length-1]}.`);
+    if(prIsDecimal) alerts.push(`PR da ${nomesPlacas[nomesPlacas.length-1]} interpretado como decimal (${pr.toFixed(2)}). Se pretendia ${ (pr*100).toFixed(1) }% está correto.`);
     kWp_total += kWp;
-    pr_weighted_sum += pr * kWp;
+    pr_weighted_sum += pr * kWp; // pr já em fração
     psh_weighted_sum += psh * kWp;
     weight_sum += kWp;
   });
@@ -1375,6 +1386,29 @@ function calcular(){
   }else{
     alertBox.style.display = 'none';
     alertText.innerHTML = '';
+  }
+
+  // Bloco de diagnóstico (lazy create para não poluir UI se não precisar)
+  let diag = document.getElementById('diagBlock');
+  if(!diag){
+    diag = document.createElement('details');
+    diag.id='diagBlock';
+    diag.style.marginTop='10px';
+    diag.innerHTML = `<summary style="cursor:pointer;color:var(--muted);font-size:12px;">Diagnóstico (intermediários)</summary><div id="diagInner" style="font-size:11px;line-height:1.35;color:var(--muted);margin-top:6px;"></div>`;
+    const resultsCol = document.querySelector('.results');
+    if(resultsCol) resultsCol.appendChild(diag);
+  }
+  const effOverall = E_pv_total>0 ? (E_bat_total / E_pv_total) : 0; // eficiência efetiva agregada
+  const diagInner = document.getElementById('diagInner');
+  if(diagInner){
+    diagInner.innerHTML = `kWp_total: <b>${kWp_total.toFixed(2)}</b><br>`+
+      `PR_ponderado: <b>${(pr_total*100).toFixed(2)}%</b> (fração ${pr_total.toFixed(4)})<br>`+
+      `PSH_ponderado: <b>${psh_total.toFixed(2)} h</b><br>`+
+      `E_dia (geração): <b>${E_dia.toFixed(2)} kWh</b><br>`+
+      `E_bat_total: <b>${E_bat_total.toFixed(2)} kWh</b><br>`+
+      `E_PV_total (pré-perdas): <b>${E_pv_total.toFixed(2)} kWh</b><br>`+
+      `Eficiência efetiva agregada (E_bat/E_PV): <b>${(effOverall*100).toFixed(2)}%</b><br>`+
+      `Saldo: <b>${saldo>=0?'+':''}${saldo.toFixed(2)} kWh</b>`;
   }
 }
 
