@@ -714,7 +714,7 @@ document.addEventListener('keydown', (e)=>{
 function carroFields(id, values={}){
   return `<div class="card-dyn">
     <div class="card-title" style="display:flex;align-items:center;gap:8px;"> 
-      <button type="button" class="min-btn" onclick="toggleMinCard('carro${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
+      <button type="button" class="min-btn" onclick="toggleMinCard(this,'carro${id}')" title="Minimizar" style="background:transparent;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px;">−</button>
       <button type="button" class="dup-btn" onclick="duplicarCarro(${id})" title="Duplicar">⧉</button>
       <button type="button" class="remove-btn" onclick="removerCarro(${id})" title="Remover">×</button>
       <span style="font-weight:700;">🚗 ${values.nome||'' ? values.nome : 'Carro '+(id+1)}</span>
@@ -845,12 +845,23 @@ function placaFields(id, values={}){
     <button type="button" class="remove-btn" onclick="removerPlaca(${id})" title="Remover">×</button>
   </div>`;
 // Minimizar/expandir cards de especificações
-function toggleMinCard(cardId){
+function toggleMinCard(arg, maybeId){
+  // Suporta toggleMinCard(buttonElem, 'carro0') e toggleMinCard('carro0')
+  let btn = null; let cardId = null;
+  if(typeof arg === 'string'){
+    cardId = arg;
+  } else if(arg && arg.nodeType===1){
+    btn = arg; cardId = maybeId;
+  }
+  if(!cardId) return;
   const el = document.getElementById(cardId);
   if(!el) return;
-  el.style.display = (el.style.display==='none') ? '' : 'none';
+  const hidden = (el.style.display === 'none');
+  el.style.display = hidden ? '' : 'none';
+  // trocar símbolo do botão se fornecido
+  if(btn){ btn.textContent = hidden ? '−' : '+'; }
 }
-}
+
 // Helper para potência do array
 function toggleParrayHelper(id){
   const el = document.getElementById('parrayHelper'+id);
@@ -1612,35 +1623,41 @@ function importarJSON(input){
   const file = input.files && input.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = e=>{
+  reader.onload = e => {
     try{
       const obj = JSON.parse(e.target.result);
       // Caso seja bundle completo
       if(obj.evConfigs || obj.carModels || obj.placaModels || obj.current){
+        // Mesclar / substituir modelos e configs
         const existingConfigs = JSON.parse(localStorage.getItem('evConfigs')||'{}');
         const incomingConfigs = obj.evConfigs || {};
-        let addedC=0, updatedC=0;
-        Object.keys(incomingConfigs).forEach(k=>{ if(!existingConfigs[k]) addedC++; else updatedC++; existingConfigs[k]=incomingConfigs[k]; });
+        Object.keys(incomingConfigs).forEach(k=> existingConfigs[k]=incomingConfigs[k]);
         localStorage.setItem('evConfigs', JSON.stringify(existingConfigs));
 
         const existingCarModels = JSON.parse(localStorage.getItem('carModels')||'{}');
         const incomingCarModels = obj.carModels || {};
-        let addedCar=0, updatedCar=0;
-  Object.keys(incomingCarModels).forEach(k=>{ if(!existingCarModels[k]) addedCar++; else updatedCar++; const m=incomingCarModels[k]; if(m){ if(m.percUtil>1) m.percUtil/=100; if(m.etaGlobal>1) m.etaGlobal/=100; } existingCarModels[k]=m; });
+        Object.keys(incomingCarModels).forEach(k=>{
+          const m = incomingCarModels[k];
+          if(m){ if(m.percUtil>1) m.percUtil/=100; if(m.etaGlobal>1) m.etaGlobal/=100; }
+          existingCarModels[k]=m;
+        });
         localStorage.setItem('carModels', JSON.stringify(existingCarModels));
 
         const existingPlacaModels = JSON.parse(localStorage.getItem('placaModels')||'{}');
         const incomingPlacaModels = obj.placaModels || {};
-        let addedPl=0, updatedPl=0;
-  Object.keys(incomingPlacaModels).forEach(k=>{ if(!existingPlacaModels[k]) addedPl++; else updatedPl++; const m=incomingPlacaModels[k]; if(m && m.pr>1) m.pr/=100; existingPlacaModels[k]=m; });
+        Object.keys(incomingPlacaModels).forEach(k=>{
+          const m = incomingPlacaModels[k];
+          if(m && m.pr>1) m.pr/=100;
+          existingPlacaModels[k]=m;
+        });
         localStorage.setItem('placaModels', JSON.stringify(existingPlacaModels));
 
-        if(obj.evLastConfig){ localStorage.setItem('evLastConfig', obj.evLastConfig); }
+        if(obj.evLastConfig) localStorage.setItem('evLastConfig', obj.evLastConfig);
 
-        // Aplicar estado atual se existir obj.current
+        // Aplicar estado atual se fornecido
         if(obj.current && obj.current.carros && obj.current.placas){
-          carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1?c.percUtil/100:c.percUtil, etaGlobal: c.etaGlobal>1?c.etaGlobal/100:c.etaGlobal}));
-          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1?p.pr/100:p.pr, etaArr: p.etaArr>1?p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
+          carros = obj.current.carros.map((c,i)=>({...c,id:i, percUtil: c.percUtil>1? c.percUtil/100 : c.percUtil, etaGlobal: c.etaGlobal>1? c.etaGlobal/100 : c.etaGlobal }));
+          placas = obj.current.placas.map((p,i)=>({...p,id:i, pr: p.pr>1? p.pr/100 : p.pr, etaArr: p.etaArr>1? p.etaArr/100 : (p.etaArr!=null? p.etaArr:1)}));
           nextCarroId = carros.length;
           nextPlacaId = placas.length;
           renderCarros(true);
@@ -1656,18 +1673,15 @@ function importarJSON(input){
             if(acm && obj.current.meta.autoCalcMode) acm.value = obj.current.meta.autoCalcMode;
           }
         }
+
         updateSavedConfigs();
         updateSavedCarModels();
         updateSavedPlacaModels();
         calcular();
         const fb = document.getElementById('configFeedback');
-        if(fb){
-          fb.style.display='block';
-          fb.style.color='var(--ok)';
-          fb.innerHTML = `Bundle importado. Configs +${addedC}/${updatedC} atualiz.; Carros modelo +${addedCar}/${updatedCar}; Placas modelo +${addedPl}/${updatedPl}.`;
-        } else {
-          alert('Bundle importado.');
-        }
+        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Bundle importado.'; }
+        else alert('Bundle importado.');
+
       } else if(obj.carros && obj.placas){
         // fallback simples (apenas estado atual)
         carros = obj.carros.map((c,i)=>({...c,id:i}));
@@ -1687,15 +1701,13 @@ function importarJSON(input){
           if(acm && obj.meta.autoCalcMode) acm.value = obj.meta.autoCalcMode;
         }
         calcular();
-        const fb = document.getElementById('configFeedback');
-        if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Config importada.'; }
+        const fb = document.getElementById('configFeedback'); if(fb){ fb.style.display='block'; fb.style.color='var(--ok)'; fb.textContent='Config importada.'; }
       } else {
         alert('Arquivo inválido.');
       }
     }catch(err){
-      alert('Erro ao importar: '+err.message);
+      alert('Erro ao importar: '+(err && err.message ? err.message : err));
     }
-    input.value='';
   };
   reader.readAsText(file);
 }
@@ -1791,6 +1803,7 @@ if(lastCfg){
   },150);
 }
 showToast('Pronto para usar.','ok',2600);
+}
 </script>
 </body>
 </html>
